@@ -28,11 +28,20 @@ OFFSET_Y = 100
 # Fonte
 FONTE = pygame.font.SysFont("arial", 20)
 
+# Carregar imagens
+IMG_MAQUINA = pygame.image.load("assets/maquina.png").convert_alpha()
+IMG_PERSONAGEM = pygame.image.load("assets/personagem.png").convert_alpha()
+
+# Redimensionar para o tamanho da célula
+IMG_MAQUINA = pygame.transform.scale(IMG_MAQUINA, (TAMANHO_CELULA * 2, TAMANHO_CELULA * 2))  # máquina 2x2
+IMG_PERSONAGEM = pygame.transform.scale(IMG_PERSONAGEM, (TAMANHO_CELULA, TAMANHO_CELULA))    # personagem 1x1
+
+
 # Importa o estado do jogo
 from classes.game_state import GameState
 
 
-def desenhar_interface(game, grid, personagem_pos):
+def desenhar_interface(game, grid, personagem_pos, maquina_selecionada):
     TELA.fill(BRANCO)
 
     # Informações do topo
@@ -69,33 +78,14 @@ def desenhar_interface(game, grid, personagem_pos):
 
     # Loja de máquinas
     TELA.blit(FONTE.render("Loja de Máquinas:", True, PRETO), (20, 420))
-    if OFFSET_Y <= y <= OFFSET_Y + GRID_LINHAS * TAMANHO_CELULA and x >= OFFSET_X:
-        # Clique na fábrica
-        col = (x - OFFSET_X) // TAMANHO_CELULA
-        lin = (y - OFFSET_Y) // TAMANHO_CELULA
-        if maquina_selecionada and pode_posicionar_maquina(grid, lin, col, maquina_selecionada):
-            for dl in range(maquina_selecionada.altura):
-                for dc in range(maquina_selecionada.largura):
-                    grid[lin + dl][col + dc] = maquina_selecionada
-            game.dinheiro -= maquina_selecionada.custo
-            maquina_selecionada = None
-    else:
-        # Clique na loja
-        for i, modelo in enumerate(game.loja_maquinas):
-            btn_x = 20 + i * 230
-            btn_y = 450
-            if btn_x <= x <= btn_x + 220 and btn_y <= y <= btn_y + 80:
-                if game.dinheiro >= modelo["custo"]:
-                    # Cria nova máquina com tamanho
-                    maquina_selecionada = Maquina(
-                        modelo["tipo"],
-                        modelo["producao"],
-                        modelo["custo"],
-                        modelo["custo_energia"],
-                        modelo.get("largura", 2),
-                        modelo.get("altura", 2)
-                    )
-                break
+    for i, modelo in enumerate(game.loja_maquinas):
+        btn_x = 20 + i * 230
+        btn_y = 450
+        pygame.draw.rect(TELA, CINZA, (btn_x, btn_y, 220, 80))
+        pygame.draw.rect(TELA, PRETO, (btn_x, btn_y, 220, 80), 2)
+        TELA.blit(FONTE.render(f"{modelo['tipo']}", True, PRETO), (btn_x + 10, btn_y + 10))
+        TELA.blit(FONTE.render(f"Prod: {modelo['producao']}/t", True, PRETO), (btn_x + 10, btn_y + 30))
+        TELA.blit(FONTE.render(f"Custo: ${modelo['custo']}", True, PRETO), (btn_x + 10, btn_y + 50))
 
     # Botão: Passar Turno
     pygame.draw.rect(TELA, VERMELHO, (600, 550, 180, 40))
@@ -106,7 +96,8 @@ def desenhar_interface(game, grid, personagem_pos):
     TELA.blit(FONTE.render("Fábrica:", True, PRETO), (OFFSET_X, OFFSET_Y - 30))
     desenhar_fabrica(grid, personagem_pos)
 
-    y = 200 + len(game.maquinas) * 90  # Logo após mostrar as máquinas
+    # Pedidos entregues
+    y = 200 + len(game.maquinas) * 90
     entregues = [p for p in game.pedidos if p.entregue]
     if entregues:
         TELA.blit(FONTE.render("Pedidos entregues:", True, PRETO), (20, y))
@@ -117,8 +108,7 @@ def desenhar_interface(game, grid, personagem_pos):
 
     pygame.display.update()
 
-
-def desenhar_fabrica(grid, personagem_pos):
+def desenhar_fabrica(grid, personagem_pos_px):
     for i in range(GRID_LINHAS):
         for j in range(GRID_COLUNAS):
             x = OFFSET_X + j * TAMANHO_CELULA
@@ -130,21 +120,12 @@ def desenhar_fabrica(grid, personagem_pos):
             # Máquina
             if grid[i][j]:
                 maquina = grid[i][j]
-                # só desenha no canto superior esquerdo dela
                 if (i == 0 or grid[i-1][j] != maquina) and (j == 0 or grid[i][j-1] != maquina):
-                    largura_px = maquina.largura * TAMANHO_CELULA
-                    altura_px = maquina.altura * TAMANHO_CELULA
-                    pygame.draw.rect(
-                        TELA, VERDE,
-                        (x + 1, y + 1, largura_px - 2, altura_px - 2)
-                    )
+                    TELA.blit(IMG_MAQUINA, (x, y))
 
-            # Personagem
-            if personagem_pos == [i, j]:
-                pygame.draw.rect(
-                    TELA, AZUL,
-                    (x + TAMANHO_CELULA // 4, y + TAMANHO_CELULA // 4, TAMANHO_CELULA * 1.5, TAMANHO_CELULA * 1.5)
-                )
+    # Desenha personagem na posição pixel exata
+    TELA.blit(IMG_PERSONAGEM, (int(personagem_pos_px[0]), int(personagem_pos_px[1])))
+
 
 
 def mover_personagem(tecla, pos, grid):
@@ -158,7 +139,7 @@ def mover_personagem(tecla, pos, grid):
     elif tecla == pygame.K_RIGHT and pos[1] < GRID_COLUNAS - 1:
         nova_pos[1] += 1
 
-    if grid[nova_pos[0]][nova_pos[1]] is None:
+    if grid[nova_pos[0]][nova_pos[1]] is None or grid[pos[0]][pos[1]] is not None:
         pos[0], pos[1] = nova_pos[0], nova_pos[1]
 
 def pode_posicionar_maquina(grid, lin, col, maquina):
@@ -174,7 +155,14 @@ def main():
     clock = pygame.time.Clock()
     game = GameState()
     grid = [[None for _ in range(GRID_COLUNAS)] for _ in range(GRID_LINHAS)]
-    personagem_pos = [0, 0]
+
+    # posição em pixels do personagem (começando no canto superior esquerdo da grade)
+    personagem_pos_px = [OFFSET_X, OFFSET_Y]
+
+    VELOCIDADE = 120  # pixels por segundo (ajuste aqui pra mudar velocidade)
+    direcao_x = 0
+    direcao_y = 0
+
     game.gerar_pedido()
     tempo_anterior = pygame.time.get_ticks()
     maquina_selecionada = None
@@ -193,60 +181,112 @@ def main():
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
+
+            elif evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_LEFT:
+                    direcao_x = -1
+                elif evento.key == pygame.K_RIGHT:
+                    direcao_x = 1
+                elif evento.key == pygame.K_UP:
+                    direcao_y = -1
+                elif evento.key == pygame.K_DOWN:
+                    direcao_y = 1
+
+                # Posicionar máquina do inventário ao pressionar M
+                lin = int((personagem_pos_px[1] - OFFSET_Y) // TAMANHO_CELULA)
+                col = int((personagem_pos_px[0] - OFFSET_X) // TAMANHO_CELULA)
+                if evento.key == pygame.K_m and game.maquinas and pode_posicionar_maquina(grid, lin, col, game.maquinas[0]):
+                    maquina = game.maquinas.pop(0)
+                    for dl in range(maquina.altura):
+                        for dc in range(maquina.largura):
+                            grid[lin + dl][col + dc] = maquina
+
+                # Remover máquina ao pressionar R
+                elif evento.key == pygame.K_r and grid[lin][col]:
+                    maquina = grid[lin][col]
+                    game.maquinas.append(maquina)
+                    for dl in range(maquina.altura):
+                        for dc in range(maquina.largura):
+                            if lin + dl < GRID_LINHAS and col + dc < GRID_COLUNAS and grid[lin + dl][col + dc] == maquina:
+                                grid[lin + dl][col + dc] = None
+
+            elif evento.type == pygame.KEYUP:
+                if evento.key in (pygame.K_LEFT, pygame.K_RIGHT):
+                    direcao_x = 0
+                elif evento.key in (pygame.K_UP, pygame.K_DOWN):
+                    direcao_y = 0
+
             elif evento.type == pygame.MOUSEBUTTONDOWN:
                 x, y = evento.pos
 
-                # Clique em modelo da loja
+                # Clique na loja
                 for i, modelo in enumerate(game.loja_maquinas):
                     btn_x = 20 + i * 230
                     btn_y = 450
                     if btn_x <= x <= btn_x + 220 and btn_y <= y <= btn_y + 80:
                         if game.dinheiro >= modelo["custo"]:
-                            maquina_selecionada = Maquina(
+                            nova_maquina = Maquina(
                                 modelo["tipo"],
                                 modelo["producao"],
                                 modelo["custo"],
                                 modelo["custo_energia"],
-                                modelo["largura"],
-                                modelo["altura"]
+                                modelo.get("largura", 2),
+                                modelo.get("altura", 2)
                             )
-                            break
+                            game.maquinas.append(nova_maquina)
+                            game.dinheiro -= modelo["custo"]
 
-                # Clique na fábrica (posição válida para colocar máquina)
-                col = (x - OFFSET_X) // TAMANHO_CELULA
-                lin = (y - OFFSET_Y) // TAMANHO_CELULA
-                if maquina_selecionada and pode_posicionar_maquina(grid, lin, col, maquina_selecionada):
-                    for dl in range(maquina_selecionada.altura):
-                        for dc in range(maquina_selecionada.largura):
-                            grid[lin + dl][col + dc] = maquina_selecionada
-                    game.dinheiro -= maquina_selecionada.custo
-                    maquina_selecionada = None
+                # Clique na fábrica
+                if OFFSET_X <= x <= OFFSET_X + GRID_COLUNAS * TAMANHO_CELULA and OFFSET_Y <= y <= OFFSET_Y + GRID_LINHAS * TAMANHO_CELULA:
+                    col = (x - OFFSET_X) // TAMANHO_CELULA
+                    lin = (y - OFFSET_Y) // TAMANHO_CELULA
+                    if maquina_selecionada and pode_posicionar_maquina(grid, lin, col, maquina_selecionada):
+                        for dl in range(maquina_selecionada.altura):
+                            for dc in range(maquina_selecionada.largura):
+                                grid[lin + dl][col + dc] = maquina_selecionada
+                        game.dinheiro -= maquina_selecionada.custo
+                        maquina_selecionada = None
 
-                # Clique no botão "Passar Turno"
+                # Botão "Passar Turno"
                 if 600 <= x <= 780 and 550 <= y <= 590:
                     game.processar_turno(grid)
 
-            elif evento.type == pygame.KEYDOWN:
-                mover_personagem(evento.key, personagem_pos, grid)
-                lin, col = personagem_pos
+        # Atualiza posição do personagem em pixels com velocidade e tempo decorrido
+        personagem_pos_px[0] += direcao_x * VELOCIDADE * decorrido
+        personagem_pos_px[1] += direcao_y * VELOCIDADE * decorrido
 
-                # Tecla M = posicionar máquina
-                if evento.key == pygame.K_m and pode_posicionar_maquina(grid, lin, col) and game.maquinas:
-                    maquina = game.maquinas.pop(0)
-                    for dl in range(2):
-                        for dc in range(2):
-                            grid[lin + dl][col + dc] = maquina
+        # Limita o personagem para dentro da área da fábrica
+        personagem_pos_px[0] = max(OFFSET_X, min(personagem_pos_px[0], OFFSET_X + (GRID_COLUNAS - 1) * TAMANHO_CELULA))
+        personagem_pos_px[1] = max(OFFSET_Y, min(personagem_pos_px[1], OFFSET_Y + (GRID_LINHAS - 1) * TAMANHO_CELULA))
 
-                # Tecla R = remover máquina
-                elif evento.key == pygame.K_r and grid[lin][col]:
-                    maquina = grid[lin][col]
-                    game.maquinas.append(maquina)
-                    for dl in range(2):
-                        for dc in range(2):
-                            if lin + dl < GRID_LINHAS and col + dc < GRID_COLUNAS and grid[lin + dl][col + dc] == maquina:
-                                grid[lin + dl][col + dc] = None
+        # Desenha tudo (passa posição em pixels)
+        desenhar_interface(game, grid, personagem_pos_px, maquina_selecionada)
 
-        desenhar_interface(game, grid, personagem_pos)
+        # Game over check e loop de espera aqui (se você já implementou no main)
+        if game.game_over:
+            # Exibir mensagem de game over na tela
+            fonte_grande = pygame.font.SysFont("arial", 50)
+            texto = fonte_grande.render("GAME OVER", True, (255, 0, 0))
+            TELA.fill((0,0,0))
+            TELA.blit(texto, (LARGURA//2 - texto.get_width()//2, ALTURA//2 - texto.get_height()//2))
+            pygame.display.update()
+            
+            # Espera o jogador fechar ou reiniciar
+            esperando = True
+            while esperando:
+                for evento in pygame.event.get():
+                    if evento.type == pygame.QUIT:
+                        esperando = False
+                        pygame.quit()
+                        sys.exit()
+                    # Opcional: reiniciar com alguma tecla, por exemplo, R
+                    elif evento.type == pygame.KEYDOWN and evento.key == pygame.K_r:
+                        esperando = False
+                        # Aqui você pode reiniciar o jogo recriando o objeto GameState e resetando grid
+                        main()  # cuidado com recursão; uma alternativa é um loop externo ao main
+            # Se não reiniciar, sai do jogo
+            rodando = False
+
 
     pygame.quit()
     sys.exit()
@@ -254,5 +294,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-print("teste")

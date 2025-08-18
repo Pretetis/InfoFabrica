@@ -6,7 +6,8 @@ class Pedido:
         self.entregue = False
 
     def atualizar(self):
-        self.prazo -= 1
+        if self.prazo > 0:
+            self.prazo -= 1
 
     def tentar_entrega(self, estoque):
         if estoque.get(self.tipo, 0) >= self.quantidade:

@@ -12,6 +12,7 @@ class GameState:
         self.maquinas = []
         self.pedidos = []
         self.reputacao = 100
+        self.game_over = False
 
         self.loja_maquinas = [
             {"tipo": "pecaA", "custo": 200, "producao": 2, "custo_energia": 10, "largura": 2, "altura": 2},
@@ -47,18 +48,17 @@ class GameState:
 
     def processar_turno(self, grid):
         custo_total_energia = 0
-        print("Estoque atual:", self.estoque)
-        print("Pedidos:", [(p.tipo, p.quantidade, p.prazo, p.entregue) for p in self.pedidos])
-
-        # Produção das máquinas no grid
-        for linha in grid:
-            for maquina in linha:
-                if maquina:
+        maquinas_contadas = set()
+        for i, linha in enumerate(grid):
+            for j, maquina in enumerate(linha):
+                if maquina and maquina not in maquinas_contadas:
+                    maquinas_contadas.add(maquina)
                     tipo = maquina.tipo
                     if tipo not in self.estoque:
                         self.estoque[tipo] = 0
                     self.estoque[tipo] += maquina.producao
                     custo_total_energia += maquina.custo_energia
+
         # Atualiza pedidos, tenta entregar, e aplica reputação
         for pedido in self.pedidos:
             if not pedido.entregue:
@@ -72,7 +72,8 @@ class GameState:
             if pedido.entregue:
                 pedidos_a_remover.append(pedido)  # Remove entregues
             elif pedido.prazo <= 0 and not pedido.entregue:
-                self.reputacao -= 10  # Penalidade de reputação
+                if self.reputacao >= -100:
+                    self.reputacao -= 10  # Penalidade de reputação
                 pedidos_a_remover.append(pedido)
 
         # Remove pedidos finalizados (entregues ou vencidos)
@@ -80,6 +81,9 @@ class GameState:
             self.pedidos.remove(pedido)
 
         self.dinheiro -= custo_total_energia
+        if self.dinheiro <= -100:
+            self.game_over = True
+
         self.tempo_restante = self.tempo_turno
         self.turno += 1
 
