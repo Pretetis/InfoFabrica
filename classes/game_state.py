@@ -13,6 +13,7 @@ class GameState:
         self.pedidos = []
         self.reputacao = 100
         self.game_over = False
+        self.pedido_concluido_animacao = False
 
         self.loja_maquinas = [
             {"tipo": "pecaA", "custo": 200, "producao": 2, "custo_energia": 10, "largura": 2, "altura": 2},
@@ -53,30 +54,27 @@ class GameState:
             for j, maquina in enumerate(linha):
                 if maquina and maquina not in maquinas_contadas:
                     maquinas_contadas.add(maquina)
-                    tipo = maquina.tipo
-                    if tipo not in self.estoque:
-                        self.estoque[tipo] = 0
-                    self.estoque[tipo] += maquina.producao
+                    maquina.produzir() # <-- CORRIGIDO: Agora só acumula as peças na máquina
                     custo_total_energia += maquina.custo_energia
 
-        # Atualiza pedidos, tenta entregar, e aplica reputação
+        # Atualiza pedidos e tenta entregar
         for pedido in self.pedidos:
             if not pedido.entregue:
                 pedido.atualizar()
                 if pedido.tentar_entrega(self.estoque):
                     self.dinheiro += pedido.quantidade * 15
+                    self.pedido_concluido_animacao = True # <-- Ativa a animação do caminhão
 
-        # Aplica penalidade para pedidos que venceram e não foram entregues
+        # Remove pedidos entregues ou vencidos
         pedidos_a_remover = []
         for pedido in self.pedidos:
             if pedido.entregue:
-                pedidos_a_remover.append(pedido)  # Remove entregues
+                pedidos_a_remover.append(pedido)
             elif pedido.prazo <= 0 and not pedido.entregue:
                 if self.reputacao >= -100:
-                    self.reputacao -= 10  # Penalidade de reputação
+                    self.reputacao -= 10
                 pedidos_a_remover.append(pedido)
 
-        # Remove pedidos finalizados (entregues ou vencidos)
         for pedido in pedidos_a_remover:
             self.pedidos.remove(pedido)
 
