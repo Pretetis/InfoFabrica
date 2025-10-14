@@ -8,6 +8,9 @@ class Jogador:
         self.pos_y_px = y
         self.velocidade = 120
 
+        # --- ADICIONADO: Cria o retângulo de colisão ---
+        self.rect = pygame.Rect(self.pos_x_px, self.pos_y_px, self.tamanho_celula, self.tamanho_celula)
+
         self.animacoes = self.carregar_sprites()
         self.estado_atual = "parado_baixo"
         self.frame_atual = 0
@@ -15,7 +18,6 @@ class Jogador:
         self.ultimo_update = pygame.time.get_ticks()
 
     def carregar_sprites(self):
-        # Esta função está correta, não precisa de alterações.
         largura_sprite = 16
         altura_sprite = 16
         animacoes = {
@@ -40,36 +42,33 @@ class Jogador:
     def update(self, direcao_x, direcao_y, decorrido, limites):
         estado_anterior = self.estado_atual
         
-        # --- LÓGICA DE ESTADO CORRIGIDA ---
         if direcao_x == 0 and direcao_y == 0:
-            # Se estava andando, muda para o estado parado correspondente
             if "andando" in self.estado_atual:
                 self.estado_atual = self.estado_atual.replace("andando", "parado")
         else:
-            # A direção vertical tem prioridade se ambas as teclas forem pressionadas
             if direcao_y > 0: self.estado_atual = "andando_baixo"
             elif direcao_y < 0: self.estado_atual = "andando_cima"
             elif direcao_x > 0: self.estado_atual = "andando_dir"
             elif direcao_x < 0: self.estado_atual = "andando_esq"
 
-        # --- CORREÇÃO PRINCIPAL: Resetar o frame se o estado mudou ---
         if self.estado_atual != estado_anterior:
             self.frame_atual = 0
 
-        # Atualiza a posição
         self.pos_x_px += direcao_x * self.velocidade * decorrido
         self.pos_y_px += direcao_y * self.velocidade * decorrido
 
-        # Aplica limites para não sair da fábrica
         offset_x, offset_y, grid_colunas, grid_linhas = limites
         self.pos_x_px = max(offset_x, min(self.pos_x_px, offset_x + (grid_colunas - 1) * self.tamanho_celula))
         self.pos_y_px = max(offset_y, min(self.pos_y_px, offset_y + (grid_linhas - 1) * self.tamanho_celula))
 
-        # Atualiza o frame da animação
         agora = pygame.time.get_ticks()
         if agora - self.ultimo_update > self.tempo_animacao:
             self.ultimo_update = agora
             self.frame_atual = (self.frame_atual + 1) % len(self.animacoes[self.estado_atual])
+
+        # --- ADICIONADO: Atualiza a posição do retângulo de colisão ---
+        self.rect.topleft = (self.pos_x_px, self.pos_y_px)
+
 
     def get_pos_grid(self, offset_x, offset_y):
         col = int((self.pos_x_px - offset_x) // self.tamanho_celula)
@@ -78,4 +77,5 @@ class Jogador:
 
     def draw(self, superficie):
         imagem_atual = self.animacoes[self.estado_atual][self.frame_atual]
-        superficie.blit(imagem_atual, (int(self.pos_x_px), int(self.pos_y_px)))
+        # Usamos o self.rect para desenhar, garantindo consistência
+        superficie.blit(imagem_atual, self.rect)

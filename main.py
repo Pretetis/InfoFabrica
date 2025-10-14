@@ -3,144 +3,10 @@ import random
 import sys
 
 # --- CLASSES ---
-
-class Caminhao:
-    def __init__(self, x, y, imagem):
-        self.imagem = imagem
-        self.largura, self.altura = self.imagem.get_size()
-        self.pos_base = pygame.math.Vector2(x, y)
-        self.rect = self.imagem.get_rect(topleft=self.pos_base)
-        
-        # Área de interação para o jogador (atrás do caminhão)
-        self.area_carga = pygame.Rect(x + self.largura, y, 60, self.altura)
-
-        self.estado = 'PARADO'  # PARADO, PARTINDO, VOLTANDO
-        self.velocidade = 350 # Pixels por segundo
-        self.carga = {} # Ex: {"Motor V1": 5}
-
-    def update(self, dt, game_state, grid):
-        if self.estado == 'PARTINDO':
-            self.rect.x -= self.velocidade * dt
-            # Se saiu da tela
-            if self.rect.right < 0:
-                self.processar_entrega(game_state)
-                game_state.produzir_nas_maquinas(grid)
-                game_state.avancar_turno()
-                self.iniciar_retorno()
-
-        elif self.estado == 'VOLTANDO':
-            self.rect.x += self.velocidade * dt
-            # Se voltou para a posição original
-            if self.rect.x >= self.pos_base.x:
-                self.rect.topleft = self.pos_base
-                self.estado = 'PARADO'
-
-    def draw(self, surface, fonte):
-        surface.blit(self.imagem, self.rect)
-        # Desenha um contorno na área de carga para feedback visual
-        pygame.draw.rect(surface, (255, 200, 0, 150), self.area_carga, 2)
-
-        # Desenha a carga atual do caminhão
-        if self.carga:
-            y_offset = 0
-            for item, qtd in self.carga.items():
-                texto_carga = fonte.render(f"{item}: {qtd}", True, COR_TITULO)
-                pos = (self.rect.centerx - texto_carga.get_width() / 2, self.rect.y - 25 - y_offset)
-                surface.blit(texto_carga, pos)
-                y_offset += 20
-
-
-    def iniciar_partida(self):
-        if not self.estado == 'PARADO': return
-        self.estado = 'PARTINDO'
-
-    def iniciar_retorno(self):
-        self.rect.x = -self.largura - 20 # Começa fora da tela à esquerda
-        self.estado = 'VOLTANDO'
-
-    def receber_carga(self, tipo_item, quantidade):
-        if tipo_item not in self.carga:
-            self.carga[tipo_item] = 0
-        self.carga[tipo_item] += quantidade
-        print(f"Caminhão carregado com {quantidade}x {tipo_item}. Carga atual: {self.carga}")
-
-    def processar_entrega(self, game_state):
-        if not self.carga:
-            print("Caminhão partiu vazio.")
-            return
-
-        print("Processando entrega...")
-        pedidos_a_remover = []
-        for pedido in game_state.pedidos:
-            if not pedido.entregue and pedido.tipo in self.carga:
-                if self.carga[pedido.tipo] >= pedido.quantidade:
-                    print(f"Pedido de {pedido.quantidade}x {pedido.tipo} entregue!")
-                    pedido.entregue = True
-                    recompensa = pedido.quantidade * 100 # Exemplo de recompensa
-                    game_state.dinheiro += recompensa
-                    game_state.reputacao += 10
-                    pedidos_a_remover.append(pedido) # Marcar para remoção posterior se quiser
-        
-        self.carga.clear() # Esvazia o caminhão após a entrega
-
-class Maquina:
-    # (Sem alterações)
-    def __init__(self, tipo, producao, custo, custo_energia, largura, altura, animacao=None):
-        self.tipo, self.producao, self.custo, self.custo_energia = tipo, producao, custo, custo_energia
-        self.largura, self.altura = largura, altura
-        self.pecas_para_coletar = 0
-        self.pos_lin, self.pos_col = -1, -1
-        self.animation_frames = animacao
-        self.current_frame_index, self.animation_timer, self.animation_speed = 0, 0, 0.15
-    def update_animation(self, dt):
-        if not self.animation_frames: return
-        self.animation_timer += dt
-        if self.animation_timer >= self.animation_speed:
-            self.animation_timer = 0
-            self.current_frame_index = (self.current_frame_index + 1) % len(self.animation_frames)
-    def get_current_frame(self):
-        return self.animation_frames[self.current_frame_index] if self.animation_frames else None
-    def produzir(self): self.pecas_para_coletar += self.producao
-
-
-class GameState:
-    def __init__(self):
-        self.turno = 1
-        self.tempo_restante = 60
-        self.dinheiro = 1000
-        self.reputacao = 100
-        self.estoque = {}
-        self.pedidos = []
-        self.maquinas = []
-        self.loja_maquinas = [
-            {"tipo": "Motor V1", "producao": 5, "custo": 300, "custo_energia": 10, "largura": 2, "altura": 2},
-            {"tipo": "Chassi Básico", "producao": 2, "custo": 500, "custo_energia": 15, "largura": 2, "altura": 2},
-        ]
-        self.estado_jogo = 'JOGANDO' # NOVO: JOGANDO, ANIMACAO_TURNO
-
-    def produzir_nas_maquinas(self, grid):
-        maquinas_processadas = set()
-        for linha in grid:
-            for celula in linha:
-                if isinstance(celula, Maquina) and celula not in maquinas_processadas:
-                    celula.produzir()
-                    maquinas_processadas.add(celula)
-
-    def avancar_turno(self):
-        self.turno += 1
-        self.tempo_restante = 60
-        print(f"Iniciando Turno {self.turno}")
-
-    def gerar_pedido(self):
-        class Pedido:
-            def __init__(self, tipo, quantidade, prazo):
-                self.tipo, self.quantidade, self.prazo, self.entregue = tipo, quantidade, prazo, False
-        self.pedidos.append(Pedido("Motor V1", 10, self.turno + 5))
-        self.pedidos.append(Pedido("Chassi Básico", 5, self.turno + 8))
-
-
-
-
+from classes.game_state import GameState
+from classes.jogador import Jogador
+from classes.maquina import Maquina
+from classes.caminhao import Caminhao
 
 # --- Início do Código Principal ---
 pygame.init()
@@ -152,6 +18,8 @@ pygame.display.set_caption("Jogo de Gestão com Logística")
 COR_FUNDO=(30,30,40);COR_PAINEL=(45,45,55);COR_TEXTO=(220,220,220);COR_TITULO=(255,255,255);COR_FUNDO_EXTERNO=(10,10,10);COR_BOTAO_NORMAL=(70,70,80);COR_BOTAO_HOVER=(100,100,110);COR_BOTAO_BORDA=(130,130,140);VERDE_BRILHANTE=(0,255,120);VERMELHO_BRILHANTE=(255,80,80);AMARELO_BRILHANTE=(255,200,0)
 TAMANHO_CELULA=40;GRID_COLUNAS=20;GRID_LINHAS=12;OFFSET_X=420;OFFSET_Y=120
 FONTE=pygame.font.SysFont("monospace",18);FONTE_TITULO=pygame.font.SysFont("monospace",22,bold=True)
+FONTE_TUTORIAL = pygame.font.SysFont("monospace", 16)
+
 
 # --- IMAGENS ---
 IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_CELULA * 2, TAMANHO_CELULA * 2))
@@ -162,10 +30,8 @@ except: IMG_ENGRENAGEM = None
 try:
     ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_CELULA * 2, TAMANHO_CELULA * 2)) for i in range(1, 4)]
 except: ANIMACAO_MAQUINA_M1 = None
-# NOVO: Carregar imagem do caminhão
 try:
     IMG_CAMINHAO = pygame.image.load("assets/maquinas/caminhao/caminhao1.png").convert_alpha()
-    # Ajuste a escala conforme o tamanho da sua imagem
     IMG_CAMINHAO = pygame.transform.scale(IMG_CAMINHAO, (TAMANHO_CELULA * 4, TAMANHO_CELULA * 2))
 except Exception as e:
     print(f"Erro ao carregar imagem do caminhão: {e}"); IMG_CAMINHAO = None
@@ -175,8 +41,38 @@ def converter_pos_mouse(pos, tela_rect, jogo_largura, jogo_altura):
     x = x * (jogo_largura / tela_rect.width); y = y * (jogo_altura / tela_rect.height)
     return int(x), int(y)
 
+# --- NOVA FUNÇÃO: DESENHAR TUTORIAL ---
+def desenhar_tutorial(surface):
+    # Fundo semi-transparente
+    overlay = pygame.Surface((JOGO_LARGURA, JOGO_ALTURA), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180)) # Cor preta com 180 de alpha (transparência)
+    surface.blit(overlay, (0, 0))
+
+    # Conteúdo do tutorial
+    controles = [
+        "TUTORIAL - Controles do Jogo",
+        "",
+        "[W, A, S, D] ou [Setas] - Mover o personagem",
+        "[E] - Coletar peças de uma máquina",
+        "[M] - Posicionar máquina comprada",
+        "[F] - Carregar peças no caminhão",
+        "[H] - Mostrar / Esconder este menu de ajuda",
+        "[Mouse] - Comprar na loja e passar o turno",
+        "",
+        "Pressione qualquer tecla para começar..."
+    ]
+    
+    y_pos = 150
+    for i, linha in enumerate(controles):
+        cor = AMARELO_BRILHANTE if i == 0 else COR_TEXTO
+        fonte = FONTE_TITULO if i == 0 else FONTE_TUTORIAL
+        texto_surf = fonte.render(linha, True, cor)
+        texto_rect = texto_surf.get_rect(center=(JOGO_LARGURA / 2, y_pos))
+        surface.blit(texto_surf, texto_rect)
+        y_pos += 30 if i == 0 else 25
+
+
 def desenhar_interface(game, grid, jogador, pos_mouse, dt, caminhao):
-    # (Interface de painéis, loja, etc. - sem alterações)
     TELA_JOGO.fill(COR_FUNDO)
     pygame.draw.rect(TELA_JOGO,COR_PAINEL,(0,0,JOGO_LARGURA,80));info=[f"Turno: {game.turno}",f"Tempo: {int(game.tempo_restante)}s",f"Dinheiro: ${game.dinheiro}",f"Reputação: {game.reputacao}"];[TELA_JOGO.blit(FONTE.render(linha,True,COR_TEXTO),(20+i*250,30))for i,linha in enumerate(info)]
     pygame.draw.rect(TELA_JOGO,COR_PAINEL,(0,80,400,JOGO_ALTURA-80));y_painel=100
@@ -201,7 +97,6 @@ def desenhar_interface(game, grid, jogador, pos_mouse, dt, caminhao):
 def desenhar_fabrica(grid, jogador, dt, caminhao):
     TELA_JOGO.blit(IMG_CHAO, (OFFSET_X, OFFSET_Y))
     
-    # Desenha o caminhão primeiro para que os outros itens fiquem por cima
     if caminhao:
         caminhao.draw(TELA_JOGO, FONTE)
 
@@ -209,7 +104,7 @@ def desenhar_fabrica(grid, jogador, dt, caminhao):
     for i in range(GRID_LINHAS):
         for j in range(GRID_COLUNAS):
             maquina = grid[i][j]
-            if maquina and maquina not in maquinas_desenhadas:
+            if isinstance(maquina, Maquina) and maquina not in maquinas_desenhadas:
                 x = OFFSET_X + maquina.pos_col * TAMANHO_CELULA; y = OFFSET_Y + maquina.pos_lin * TAMANHO_CELULA
                 maquina.update_animation(dt); frame = maquina.get_current_frame()
                 TELA_JOGO.blit(frame if frame else IMG_MAQUINA_ESTATICA, (x, y))
@@ -227,7 +122,6 @@ def desenhar_fabrica(grid, jogador, dt, caminhao):
 
 
 def pode_posicionar_maquina(grid, lin, col, maquina):
-    # (Sem alterações)
     if not (0<=lin<GRID_LINHAS and 0<=col<GRID_COLUNAS): return False
     try:
         if lin+maquina.altura>GRID_LINHAS or col+maquina.largura>GRID_COLUNAS: return False
@@ -243,36 +137,54 @@ def main():
     grid = [[None for _ in range(GRID_COLUNAS)] for _ in range(GRID_LINHAS)]
     jogador = Jogador(OFFSET_X + GRID_COLUNAS * TAMANHO_CELULA / 2, OFFSET_Y + GRID_LINHAS * TAMANHO_CELULA / 2, TAMANHO_CELULA)
     
-    # NOVO: Instancia o caminhão
     caminhao = Caminhao(OFFSET_X, OFFSET_Y, IMG_CAMINHAO) if IMG_CAMINHAO else None
 
     direcao_x, direcao_y = 0, 0; game.gerar_pedido(); tempo_anterior = pygame.time.get_ticks()
 
+    # --- NOVA VARIÁVEL: CONTROLE DO TUTORIAL ---
+    mostrar_tutorial = True
+    tutorial_visto_uma_vez = False
+
     rodando = True
     while rodando:
-        agora = pygame.time.get_ticks(); decorrido = (agora - tempo_anterior) / 1000; tempo_anterior = agora
+        agora = pygame.time.get_ticks()
+        # Se o tutorial estiver ativo, o tempo do jogo não passa
+        if not mostrar_tutorial:
+            decorrido = (agora - tempo_anterior) / 1000
+        else:
+            decorrido = 0
+        tempo_anterior = agora
+        
         clock.tick(60)
 
-        # Atualiza o tempo apenas se o jogo não estiver em uma animação
-        if game.estado_jogo == 'JOGANDO':
+        if game.estado_jogo == 'JOGANDO' and not mostrar_tutorial:
             game.tempo_restante -= decorrido
             if game.tempo_restante <= 0:
-                game.estado_jogo = 'ANIMACAO_TURNO'
-                caminhao.iniciar_partida()
-
-        # Calcula a posição do mouse e o rect da tela escalada
-        tela_rect = TELA.get_rect(); ratio = JOGO_LARGURA/JOGO_ALTURA; nova_largura, nova_altura = TELA.get_size()
-        if nova_largura/nova_altura > ratio: escala_largura=int(nova_altura*ratio); escala_altura=nova_altura
-        else: escala_largura=nova_largura; escala_altura=int(nova_largura/ratio)
-        tela_jogo_rect = pygame.Rect(0,0,escala_largura,escala_altura); tela_jogo_rect.center=tela_rect.center
-        pos_mouse_real=pygame.mouse.get_pos(); pos_mouse_convertida=converter_pos_mouse(pos_mouse_real,tela_jogo_rect,JOGO_LARGURA,JOGO_ALTURA)
+                if caminhao:
+                    game.estado_jogo = 'ANIMACAO_TURNO'
+                    caminhao.iniciar_partida()
+                else:
+                    game.produzir_nas_maquinas(grid)
+                    game.avancar_turno()
 
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT: rodando = False
             elif evento.type == pygame.VIDEORESIZE: TELA = pygame.display.set_mode(evento.size, pygame.RESIZABLE)
             
-            # Só processa eventos de input se não estiver em animação
-            if game.estado_jogo == 'JOGANDO':
+            if evento.type == pygame.KEYDOWN:
+                 # Esconde o tutorial inicial ao pressionar qualquer tecla
+                if not tutorial_visto_uma_vez:
+                    mostrar_tutorial = False
+                    tutorial_visto_uma_vez = True
+                    tempo_anterior = pygame.time.get_ticks() # Reinicia o contador de tempo
+
+                # Tecla para mostrar/esconder o tutorial a qualquer momento
+                if evento.key == pygame.K_h:
+                    mostrar_tutorial = not mostrar_tutorial
+                    tempo_anterior = pygame.time.get_ticks() # Pausa/despausa o tempo
+
+            # Só processa inputs do jogo se o tutorial não estiver na tela
+            if not mostrar_tutorial and game.estado_jogo == 'JOGANDO':
                 if evento.type == pygame.KEYDOWN:
                     if evento.key in (pygame.K_LEFT, pygame.K_a): direcao_x = -1
                     elif evento.key in (pygame.K_RIGHT, pygame.K_d): direcao_x = 1
@@ -288,51 +200,75 @@ def main():
                     
                     if evento.key == pygame.K_e:
                         if 0<=lin<GRID_LINHAS and 0<=col<GRID_COLUNAS and grid[lin][col]:
-                            maquina = grid[lin][col]
-                            if maquina.pecas_para_coletar > 0:
-                                if maquina.tipo not in game.estoque: game.estoque[maquina.tipo] = 0
-                                game.estoque[maquina.tipo] += maquina.pecas_para_coletar
-                                maquina.pecas_para_coletar = 0
+                            maquina_clicada = grid[lin][col]
+                            if isinstance(maquina_clicada, Maquina) and maquina_clicada.pecas_para_coletar > 0:
+                                if maquina_clicada.tipo not in game.estoque: game.estoque[maquina_clicada.tipo] = 0
+                                game.estoque[maquina_clicada.tipo] += maquina_clicada.pecas_para_coletar
+                                maquina_clicada.pecas_para_coletar = 0
                     
-                    # NOVO: Interação com o caminhão para depositar
-                    if evento.key == pygame.K_d and caminhao and caminhao.area_carga.colliderect(jogador.rect):
-                        # Tenta carregar o primeiro pedido não entregue
+                    # --- CONTROLE CORRIGIDO: Tecla "F" para carregar caminhão ---
+                    if evento.key == pygame.K_f and caminhao and caminhao.area_carga.colliderect(jogador.rect):
                         for pedido in game.pedidos:
                             if not pedido.entregue and pedido.tipo in game.estoque and game.estoque[pedido.tipo] > 0:
-                                qtd_a_mover = min(game.estoque[pedido.tipo], pedido.quantidade)
-                                caminhao.receber_carga(pedido.tipo, qtd_a_mover)
-                                game.estoque[pedido.tipo] -= qtd_a_mover
-                                if game.estoque[pedido.tipo] == 0:
-                                    del game.estoque[pedido.tipo]
-                                break # Carrega apenas um tipo de item por vez
+                                qtd_a_mover = min(game.estoque[pedido.tipo], pedido.quantidade - caminhao.carga.get(pedido.tipo, 0))
+                                if qtd_a_mover > 0:
+                                    caminhao.receber_carga(pedido.tipo, qtd_a_mover)
+                                    game.estoque[pedido.tipo] -= qtd_a_mover
+                                    if game.estoque[pedido.tipo] <= 0:
+                                        del game.estoque[pedido.tipo]
+                                    break
 
                 elif evento.type == pygame.KEYUP:
                     if evento.key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d): direcao_x = 0
                     elif evento.key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s): direcao_y = 0
-
-                elif evento.type == pygame.MOUSEBUTTONDOWN:
+                
+                pos_mouse_real=pygame.mouse.get_pos()
+                tela_rect = TELA.get_rect()
+                ratio = JOGO_LARGURA/JOGO_ALTURA
+                nova_largura, nova_altura = TELA.get_size()
+                if nova_largura/nova_altura > ratio:
+                    escala_largura=int(nova_altura*ratio); escala_altura=nova_altura
+                else:
+                    escala_largura=nova_largura; escala_altura=int(nova_largura/ratio)
+                tela_jogo_rect = pygame.Rect(0,0,escala_largura,escala_altura)
+                tela_jogo_rect.center=tela_rect.center
+                pos_mouse_convertida=converter_pos_mouse(pos_mouse_real,tela_jogo_rect,JOGO_LARGURA,JOGO_ALTURA)
+                
+                if evento.type == pygame.MOUSEBUTTONDOWN:
                     botoes_loja, btn_turno = desenhar_interface(game, grid, jogador, pos_mouse_convertida, 0, caminhao)
                     for rect, modelo in botoes_loja:
                         if rect.collidepoint(pos_mouse_convertida) and game.dinheiro >= modelo["custo"]:
-                            nova_maquina=Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo["custo_energia"],modelo.get("largura",2),modelo.get("altura",2),animacao=ANIMACAO_MAQUINA_M1)
+                            nova_maquina=Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),modelo.get("largura",2),modelo.get("altura",2),animacao=ANIMACAO_MAQUINA_M1)
                             game.maquinas.append(nova_maquina); game.dinheiro -= modelo["custo"]
                     if btn_turno and btn_turno.collidepoint(pos_mouse_convertida):
-                        game.estado_jogo = 'ANIMACAO_TURNO'
-                        caminhao.iniciar_partida()
+                        if caminhao:
+                            game.estado_jogo = 'ANIMACAO_TURNO'
+                            caminhao.iniciar_partida()
+                        else:
+                            game.produzir_nas_maquinas(grid)
+                            game.avancar_turno()
 
-        # Atualiza a posição do jogador apenas se o jogo não estiver em animação
-        if game.estado_jogo == 'JOGANDO':
+        if game.estado_jogo == 'JOGANDO' and not mostrar_tutorial:
             jogador.update(direcao_x, direcao_y, decorrido, (OFFSET_X, OFFSET_Y, GRID_COLUNAS, GRID_LINHAS))
 
-        # Atualiza o caminhão (ele se move independentemente do estado do jogo)
         if caminhao:
             caminhao.update(decorrido, game, grid)
-            # Se o caminhão terminou de voltar, o jogo pode continuar
-            if caminhao.estado == 'VOLTANDO' and game.estado_jogo == 'ANIMACAO_TURNO':
-                game.estado_jogo = 'JOGANDO'
 
-        # Desenho
+        # --- LÓGICA DE DESENHO ---
+        tela_rect = TELA.get_rect(); ratio = JOGO_LARGURA/JOGO_ALTURA; nova_largura, nova_altura = TELA.get_size()
+        if nova_largura/nova_altura > ratio: escala_largura=int(nova_altura*ratio); escala_altura=nova_altura
+        else: escala_largura=nova_largura; escala_altura=int(nova_largura/ratio)
+        tela_jogo_rect = pygame.Rect(0,0,escala_largura,escala_altura); tela_jogo_rect.center=tela_rect.center
+        pos_mouse_real=pygame.mouse.get_pos(); pos_mouse_convertida=converter_pos_mouse(pos_mouse_real,tela_jogo_rect,JOGO_LARGURA,JOGO_ALTURA)
+        
+        # Desenha a interface do jogo base
         botoes_loja, btn_turno = desenhar_interface(game, grid, jogador, pos_mouse_convertida, decorrido, caminhao)
+        
+        # Se o tutorial estiver ativo, desenha-o por cima de tudo
+        if mostrar_tutorial:
+            desenhar_tutorial(TELA_JOGO)
+
+        # Atualiza a tela final
         TELA.fill(COR_FUNDO_EXTERNO)
         tela_escalada = pygame.transform.scale(TELA_JOGO, (tela_jogo_rect.width, tela_jogo_rect.height))
         TELA.blit(tela_escalada, tela_jogo_rect)
