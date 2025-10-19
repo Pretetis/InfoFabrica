@@ -31,6 +31,7 @@ class Caminhao:
             if self.rect.x >= self.pos_base.x:
                 self.rect.topleft = self.pos_base
                 self.estado = 'PARADO'
+                game_state.estado_jogo = 'JOGANDO'
 
     def draw(self, surface, fonte):
         surface.blit(self.imagem, self.rect)

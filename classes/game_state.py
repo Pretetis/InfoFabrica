@@ -1,3 +1,5 @@
+import random
+
 from classes.maquina import Maquina
 
 class GameState:
@@ -26,14 +28,22 @@ class GameState:
     def avancar_turno(self):
         self.turno += 1
         self.tempo_restante = 60
+        self.gerar_pedido()
         print(f"Iniciando Turno {self.turno}")
 
     def gerar_pedido(self):
-        class Pedido:
-            def __init__(self, tipo, quantidade, prazo):
-                self.tipo, self.quantidade, self.prazo, self.entregue = tipo, quantidade, prazo, False
-        self.pedidos.append(Pedido("Motor V1", 10, self.turno + 5))
-        self.pedidos.append(Pedido("Chassi Básico", 5, self.turno + 8))
+            class Pedido:
+                def __init__(self, tipo, quantidade, prazo):
+                    self.tipo, self.quantidade, self.prazo, self.entregue = tipo, quantidade, prazo, False
+            
+            # Escolhe um tipo de peça aleatório da loja
+            modelo_maquina = random.choice(self.loja_maquinas)
+            tipo_peca = modelo_maquina["tipo"]
+            
+            # Gera quantidade e prazo aleatórios
+            quantidade = random.randint(5, 20)
+            prazo = self.turno + random.randint(5, 10)
 
+            self.pedidos.append(Pedido(tipo_peca, quantidade, prazo))
 
 
