@@ -91,15 +91,21 @@ def desenhar_interface(game, grid, jogador, pos_mouse, dt, caminhao):
         rect=pygame.Rect(20,y_painel,360,35);cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse)else COR_BOTAO_NORMAL;pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2);TELA_JOGO.blit(FONTE.render(f"{modelo['tipo']} | P:{modelo['producao']} | ${modelo['custo']}",True,COR_TEXTO),(30,y_painel+7));botoes_loja.append((rect,modelo));y_painel+=45
     btn_turno=pygame.Rect(100,JOGO_ALTURA-60,200,40);cor_btn_turno=AMARELO_BRILHANTE if btn_turno.collidepoint(pos_mouse)else VERMELHO_BRILHANTE;pygame.draw.rect(TELA_JOGO,cor_btn_turno,btn_turno);texto_btn_turno=FONTE_TITULO.render("Passar Turno",True,(30,30,30));TELA_JOGO.blit(texto_btn_turno,(130,JOGO_ALTURA-55))
     TELA_JOGO.blit(FONTE_TITULO.render("Fábrica:",True,COR_TITULO),(OFFSET_X,OFFSET_Y-30))
+    
+    # A chamada para desenhar_fabrica está aqui
     desenhar_fabrica(grid, jogador, dt, caminhao)
+    
     return botoes_loja, btn_turno
 
 def desenhar_fabrica(grid, jogador, dt, caminhao):
+    # 1. Desenha o fundo (chão)
     TELA_JOGO.blit(IMG_CHAO, (OFFSET_X, OFFSET_Y))
     
+    # 2. Desenha o caminhão
     if caminhao:
         caminhao.draw(TELA_JOGO, FONTE)
 
+    # 3. Desenha todas as máquinas
     maquinas_desenhadas = set()
     for i in range(GRID_LINHAS):
         for j in range(GRID_COLUNAS):
@@ -118,6 +124,8 @@ def desenhar_fabrica(grid, jogador, dt, caminhao):
                     pygame.draw.rect(TELA_JOGO, COR_PAINEL, fundo_rect, border_radius=3)
                     TELA_JOGO.blit(texto_pecas, texto_rect)
                 maquinas_desenhadas.add(maquina)
+    
+    # 4. Finalmente, desenha o jogador por cima de tudo
     jogador.draw(TELA_JOGO)
 
 
@@ -135,20 +143,20 @@ def main():
     global TELA
     clock = pygame.time.Clock(); game = GameState()
     grid = [[None for _ in range(GRID_COLUNAS)] for _ in range(GRID_LINHAS)]
+    
+    # A linha de criação do jogador foi simplificada
     jogador = Jogador(OFFSET_X + GRID_COLUNAS * TAMANHO_CELULA / 2, OFFSET_Y + GRID_LINHAS * TAMANHO_CELULA / 2, TAMANHO_CELULA)
     
     caminhao = Caminhao(OFFSET_X, OFFSET_Y, IMG_CAMINHAO) if IMG_CAMINHAO else None
 
     direcao_x, direcao_y = 0, 0; game.gerar_pedido(); tempo_anterior = pygame.time.get_ticks()
 
-    # --- NOVA VARIÁVEL: CONTROLE DO TUTORIAL ---
     mostrar_tutorial = True
     tutorial_visto_uma_vez = False
 
     rodando = True
     while rodando:
         agora = pygame.time.get_ticks()
-        # Se o tutorial estiver ativo, o tempo do jogo não passa
         if not mostrar_tutorial:
             decorrido = (agora - tempo_anterior) / 1000
         else:
@@ -172,18 +180,15 @@ def main():
             elif evento.type == pygame.VIDEORESIZE: TELA = pygame.display.set_mode(evento.size, pygame.RESIZABLE)
             
             if evento.type == pygame.KEYDOWN:
-                 # Esconde o tutorial inicial ao pressionar qualquer tecla
                 if not tutorial_visto_uma_vez:
                     mostrar_tutorial = False
                     tutorial_visto_uma_vez = True
-                    tempo_anterior = pygame.time.get_ticks() # Reinicia o contador de tempo
+                    tempo_anterior = pygame.time.get_ticks()
 
-                # Tecla para mostrar/esconder o tutorial a qualquer momento
                 if evento.key == pygame.K_h:
                     mostrar_tutorial = not mostrar_tutorial
-                    tempo_anterior = pygame.time.get_ticks() # Pausa/despausa o tempo
+                    tempo_anterior = pygame.time.get_ticks()
 
-            # Só processa inputs do jogo se o tutorial não estiver na tela
             if not mostrar_tutorial and game.estado_jogo == 'JOGANDO':
                 if evento.type == pygame.KEYDOWN:
                     if evento.key in (pygame.K_LEFT, pygame.K_a): direcao_x = -1
@@ -206,7 +211,6 @@ def main():
                                 game.estoque[maquina_clicada.tipo] += maquina_clicada.pecas_para_coletar
                                 maquina_clicada.pecas_para_coletar = 0
                     
-                    # --- CONTROLE CORRIGIDO: Tecla "F" para carregar caminhão ---
                     if evento.key == pygame.K_f and caminhao and caminhao.area_carga.colliderect(jogador.rect):
                         for pedido in game.pedidos:
                             if not pedido.entregue and pedido.tipo in game.estoque and game.estoque[pedido.tipo] > 0:
@@ -254,21 +258,17 @@ def main():
         if caminhao:
             caminhao.update(decorrido, game, grid)
 
-        # --- LÓGICA DE DESENHO ---
         tela_rect = TELA.get_rect(); ratio = JOGO_LARGURA/JOGO_ALTURA; nova_largura, nova_altura = TELA.get_size()
         if nova_largura/nova_altura > ratio: escala_largura=int(nova_altura*ratio); escala_altura=nova_altura
         else: escala_largura=nova_largura; escala_altura=int(nova_largura/ratio)
         tela_jogo_rect = pygame.Rect(0,0,escala_largura,escala_altura); tela_jogo_rect.center=tela_rect.center
         pos_mouse_real=pygame.mouse.get_pos(); pos_mouse_convertida=converter_pos_mouse(pos_mouse_real,tela_jogo_rect,JOGO_LARGURA,JOGO_ALTURA)
         
-        # Desenha a interface do jogo base
         botoes_loja, btn_turno = desenhar_interface(game, grid, jogador, pos_mouse_convertida, decorrido, caminhao)
         
-        # Se o tutorial estiver ativo, desenha-o por cima de tudo
         if mostrar_tutorial:
             desenhar_tutorial(TELA_JOGO)
 
-        # Atualiza a tela final
         TELA.fill(COR_FUNDO_EXTERNO)
         tela_escalada = pygame.transform.scale(TELA_JOGO, (tela_jogo_rect.width, tela_jogo_rect.height))
         TELA.blit(tela_escalada, tela_jogo_rect)

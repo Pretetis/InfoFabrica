@@ -5,7 +5,7 @@ class GameState:
         self.turno = 1
         self.tempo_restante = 60
         self.dinheiro = 1000
-        self.reputacao = 100
+        self.reputacao = 150
         self.estoque = {}
         self.pedidos = []
         self.maquinas = []
