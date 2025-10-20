@@ -8,7 +8,7 @@ from classes.jogador import Jogador
 from classes.maquina import Maquina
 from classes.caminhao import Caminhao
 
-# --- NOVA CLASSE: CAMERA ---
+# --- CLASSE CAMERA ---
 class Camera:
     def __init__(self, largura_tela, altura_tela):
         self.offset = pygame.math.Vector2(0, 0)
@@ -23,7 +23,6 @@ class Camera:
         return rect.move(-self.offset.x, -self.offset.y)
 
     def screen_to_world(self, screen_pos):
-        # Converte coordenadas da tela (ex: mouse) para coordenadas do mundo
         return (screen_pos[0] + self.offset.x, screen_pos[1] + self.offset.y)
 
 # --- Início do Código Principal ---
@@ -38,17 +37,15 @@ FONTE=pygame.font.SysFont("monospace",18);FONTE_TITULO=pygame.font.SysFont("mono
 
 # --- CONFIGURAÇÕES DO GRID E SLOTS ---
 TAMANHO_CELULA = 60
-# Dimensões de um único slot em termos de células (ex: 7x5 células)
 SLOT_LARGURA_CELULAS = 7
 SLOT_ALTURA_CELULAS = 5
-# Dimensões de um slot em pixels
 SLOT_LARGURA_PX = SLOT_LARGURA_CELULAS * TAMANHO_CELULA
 SLOT_ALTURA_PX = SLOT_ALTURA_CELULAS * TAMANHO_CELULA
 
 # --- IMAGENS ---
 IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_CELULA, TAMANHO_CELULA))
+ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_CELULA, TAMANHO_CELULA)) for i in range(1, 4)]
 try:
-    # Carrega todas as imagens de fábrica disponíveis
     IMG_FABRICA_TILES = {
         "meio": pygame.image.load("assets/fabrica/meio.jpg").convert(),
         "superior": pygame.image.load("assets/fabrica/superior.jpg").convert(),
@@ -57,152 +54,168 @@ try:
         "direita": pygame.image.load("assets/fabrica/direita.jpg").convert(),
         "doca": pygame.image.load("assets/fabrica/doca.jpg").convert(),
     }
-    # Redimensiona todas as imagens para o tamanho do slot
     for key, img in IMG_FABRICA_TILES.items():
         IMG_FABRICA_TILES[key] = pygame.transform.scale(img, (SLOT_LARGURA_PX, SLOT_ALTURA_PX))
 except Exception as e:
     print(f"Erro ao carregar tiles da fábrica: {e}"); IMG_FABRICA_TILES = None
-# ... (outros carregamentos de imagem) ...
 
 # --- FUNÇÕES AUXILIARES ---
 def get_slot_from_world_pos(world_x, world_y):
-    # Converte uma posição de pixel no mundo para uma coordenada de slot
-    slot_col = world_x // SLOT_LARGURA_PX
-    slot_row = world_y // SLOT_ALTURA_PX
+    slot_col = int(world_x // SLOT_LARGURA_PX)
+    slot_row = int(world_y // SLOT_ALTURA_PX)
     return slot_row, slot_col
+
+def get_cell_from_world_pos(world_x, world_y):
+    cell_col = int(world_x // TAMANHO_CELULA)
+    cell_row = int(world_y // TAMANHO_CELULA)
+    return cell_row, cell_col
 
 # --- FUNÇÕES DE DESENHO ---
 def desenhar_interface(game, selected_slot_type, pos_mouse):
-    # (Código da interface da esquerda - sem grandes mudanças, apenas adiciona a loja de slots)
+    TELA_JOGO.fill(COR_PAINEL, (0, 0, 400, JOGO_ALTURA))
+    pygame.draw.rect(TELA_JOGO,COR_PAINEL,(0,0,JOGO_LARGURA,80))
+    info=[f"Turno: {game.turno}",f"Tempo: {int(game.tempo_restante)}s",f"Dinheiro: ${game.dinheiro}",f"Reputação: {game.reputacao}"]
+    for i, linha in enumerate(info): TELA_JOGO.blit(FONTE.render(linha, True, COR_TEXTO), (20 + i * 250, 30))
     y_painel=100
-    # ... (código do estoque, pedidos, máquinas) ...
+    TELA_JOGO.blit(FONTE_TITULO.render("Estoque:",True,COR_TITULO),(20,y_painel));y_painel+=30
+    if game.estoque:
+        for k,v in game.estoque.items(): TELA_JOGO.blit(FONTE.render(f"{k}: {v}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
+    else: TELA_JOGO.blit(FONTE.render("Vazio",True,COR_TEXTO),(30,y_painel));y_painel+=20
+    y_painel+=20;TELA_JOGO.blit(FONTE_TITULO.render("Máquinas (Inventário):",True,COR_TITULO),(20,y_painel));y_painel+=30
+    for maquina in game.maquinas: TELA_JOGO.blit(FONTE.render(f"- {maquina.tipo}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
     y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
     botoes_loja_maquinas = []
-    # ... (loop de botões de máquinas) ...
-
-    # NOVA SEÇÃO: LOJA DE SLOTS
+    for i,modelo in enumerate(game.loja_maquinas):
+        rect=pygame.Rect(20,y_painel,360,35)
+        cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) else COR_BOTAO_NORMAL
+        pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2)
+        TELA_JOGO.blit(FONTE.render(f"{modelo['tipo']} | P:{modelo['producao']} | ${modelo['custo']}",True,COR_TEXTO),(30,y_painel+7))
+        botoes_loja_maquinas.append((rect,modelo));y_painel+=45
     y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Slots:",True,COR_TITULO),(20,y_painel));y_painel+=30
     botoes_loja_slots = []
     for tipo, dados in game.loja_slots.items():
         rect = pygame.Rect(20, y_painel, 360, 35)
-        # Destaca o slot selecionado
         is_selected = tipo == selected_slot_type
         cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
         cor_botao = COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
-        
-        pygame.draw.rect(TELA_JOGO, cor_botao, rect)
-        pygame.draw.rect(TELA_JOGO, cor_borda, rect, 2)
+        pygame.draw.rect(TELA_JOGO, cor_botao, rect); pygame.draw.rect(TELA_JOGO, cor_borda, rect, 2)
         texto = f"{tipo.capitalize()} | ${dados['custo']}"
         TELA_JOGO.blit(FONTE.render(texto, True, COR_TEXTO), (30, y_painel + 7))
         botoes_loja_slots.append((rect, tipo))
         y_painel += 45
-    
     return botoes_loja_maquinas, botoes_loja_slots
 
-def desenhar_mundo(game, jogador, caminhao, camera, mouse_world_pos, selected_slot_type):
-    TELA_JOGO.fill(COR_FUNDO) # Limpa a tela
-
-    # 1. Desenha os slots da fábrica (os que o jogador comprou)
+def desenhar_mundo(game, grid, jogador, caminhao, camera, mouse_world_pos, selected_slot_type):
+    TELA_JOGO.fill(COR_FUNDO)
     for (r, c), tipo_slot in game.owned_slots.items():
         if tipo_slot in IMG_FABRICA_TILES:
             slot_rect = pygame.Rect(c * SLOT_LARGURA_PX, r * SLOT_ALTURA_PX, SLOT_LARGURA_PX, SLOT_ALTURA_PX)
             TELA_JOGO.blit(IMG_FABRICA_TILES[tipo_slot], camera.apply_to_rect(slot_rect))
+    
+    # --- NOVO: Desenha as máquinas que estão no grid ---
+    for (r, c), maquinas_na_celula in grid.items():
+        for idx, maquina in enumerate(maquinas_na_celula):
+            offset_visual = idx * 5
+            pos_x = c * TAMANHO_CELULA + offset_visual
+            pos_y = r * TAMANHO_CELULA + offset_visual
+            rect_maquina = pygame.Rect(pos_x, pos_y, TAMANHO_CELULA, TAMANHO_CELULA)
+            TELA_JOGO.blit(IMG_MAQUINA_ESTATICA, camera.apply_to_rect(rect_maquina))
 
-    # 2. Desenha os placeholders para compra de novos slots
     if selected_slot_type:
-        # Pega a posição do mouse no grid de slots
         mouse_slot_r, mouse_slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
-        
-        # Verifica se o local é adjacente e não comprado
         is_valid_spot = False
         if (mouse_slot_r, mouse_slot_c) not in game.owned_slots:
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                if (mouse_slot_r + dr, mouse_slot_c + dc) in game.owned_slots:
-                    is_valid_spot = True; break
-        
+                if (mouse_slot_r + dr, mouse_slot_c + dc) in game.owned_slots: is_valid_spot = True; break
         if is_valid_spot:
             placeholder_rect = pygame.Rect(mouse_slot_c * SLOT_LARGURA_PX, mouse_slot_r * SLOT_ALTURA_PX, SLOT_LARGURA_PX, SLOT_ALTURA_PX)
-            # Cria uma surface semi-transparente para o placeholder
-            s = pygame.Surface((SLOT_LARGURA_PX, SLOT_ALTURA_PX), pygame.SRCALPHA)
-            s.fill((0, 255, 120, 100)) # Verde semi-transparente
+            s = pygame.Surface((SLOT_LARGURA_PX, SLOT_ALTURA_PX), pygame.SRCALPHA); s.fill((0, 255, 120, 100))
             TELA_JOGO.blit(s, camera.apply_to_rect(placeholder_rect))
-
-    # 3. Desenha o jogador e outros elementos do mundo
-    TELA_JOGO.blit(jogador.animacoes[jogador.estado_atual][jogador.frame_atual], camera.apply_to_rect(jogador.rect))
+    jogador.draw(TELA_JOGO, camera)
 
 # --- LÓGICA PRINCIPAL ---
 def main():
     game = GameState()
-    # Posição inicial do jogador no centro do slot inicial (0,0)
+    # --- NOVO: Grid agora é um dicionário para o mundo infinito ---
+    grid_maquinas = {}
+    
     start_pos_x = (0.5 * SLOT_LARGURA_PX)
     start_pos_y = (0.5 * SLOT_ALTURA_PX)
     jogador = Jogador(start_pos_x, start_pos_y, TAMANHO_CELULA)
-    
     camera = Camera(JOGO_LARGURA, JOGO_ALTURA)
-    caminhao = None # Caminhão pode ser adicionado depois
-    
+    caminhao = None
     direcao_x, direcao_y = 0, 0
     tempo_anterior = pygame.time.get_ticks()
-    selected_slot_type = None # Mantém o controle de qual slot da loja está selecionado
-    
+    selected_slot_type = None
     rodando = True
     while rodando:
         agora = pygame.time.get_ticks()
         decorrido = (agora - tempo_anterior) / 1000.0
         tempo_anterior = agora
-        
-        # --- LÓGICA DE EVENTOS ---
         pos_mouse_tela = pygame.mouse.get_pos()
         
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT: rodando = False
-            
-            # Eventos de teclado
             if evento.type == pygame.KEYDOWN:
                 if evento.key in (pygame.K_LEFT, pygame.K_a): direcao_x = -1
                 elif evento.key in (pygame.K_RIGHT, pygame.K_d): direcao_x = 1
                 elif evento.key in (pygame.K_UP, pygame.K_w): direcao_y = -1
                 elif evento.key in (pygame.K_DOWN, pygame.K_s): direcao_y = 1
+                
+                # --- NOVO: Lógica de posicionamento de máquinas ---
+                if evento.key == pygame.K_m and game.maquinas:
+                    cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
+                    slot_r, slot_c = get_slot_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
+                    
+                    if (slot_r, slot_c) in game.owned_slots:
+                        maquina_a_colocar = game.maquinas.pop(0)
+                        
+                        if (cell_r, cell_c) not in grid_maquinas:
+                            grid_maquinas[(cell_r, cell_c)] = []
+                        
+                        grid_maquinas[(cell_r, cell_c)].append(maquina_a_colocar)
+                        print(f"Máquina colocada em {cell_r, cell_c}")
+
             if evento.type == pygame.KEYUP:
                 if evento.key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d): direcao_x = 0
                 elif evento.key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s): direcao_y = 0
+            if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+                if pos_mouse_tela[0] < 400:
+                    b_maquinas, b_slots = desenhar_interface(game, selected_slot_type, pos_mouse_tela)
+                    for rect, tipo in b_slots:
+                        if rect.collidepoint(pos_mouse_tela): selected_slot_type = tipo if selected_slot_type != tipo else None
+                    
+                    # --- CORRIGIDO: Lógica para comprar máquinas ---
+                    for rect, modelo in b_maquinas:
+                        if rect.collidepoint(pos_mouse_tela) and game.dinheiro >= modelo["custo"]:
+                            game.dinheiro -= modelo['custo']
+                            nova_maquina = Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),1,1,animacao=ANIMACAO_MAquina_M1)
+                            game.maquinas.append(nova_maquina)
+                            print(f"Máquina '{modelo['tipo']}' comprada e adicionada ao inventário!")
+                else:
+                    if selected_slot_type:
+                        mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
+                        slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
+                        if game.expandir_fabrica(slot_r, slot_c, selected_slot_type): selected_slot_type = None
 
-            # Eventos de Mouse
-            if evento.type == pygame.MOUSEBUTTONDOWN:
-                if evento.button == 1: # Botão esquerdo
-                    # Lógica para a interface (painel esquerdo)
-                    if pos_mouse_tela[0] < 400:
-                        b_maquinas, b_slots = desenhar_interface(game, selected_slot_type, pos_mouse_tela)
-                        # Checa cliques nos botões da loja de slots
-                        for rect, tipo in b_slots:
-                            if rect.collidepoint(pos_mouse_tela):
-                                selected_slot_type = tipo if selected_slot_type != tipo else None # Clicar de novo deseleciona
-                    # Lógica para o mundo do jogo (área da fábrica)
-                    else:
-                        if selected_slot_type:
-                            mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
-                            slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
-                            if game.expandir_fabrica(slot_r, slot_c, selected_slot_type):
-                                selected_slot_type = None # Deseleciona após a compra
-
-        # --- LÓGICA DE ATUALIZAÇÃO ---
-        # Movimentação do jogador com colisão nos limites dos slots
-        next_pos_x = jogador.rect.x + direcao_x * jogador.velocidade * decorrido
-        next_pos_y = jogador.rect.y + direcao_y * jogador.velocidade * decorrido
-        next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x + jogador.rect.width / 2, next_pos_y + jogador.rect.height / 2)
+        # LÓGICA DE ATUALIZAÇÃO DE MOVIMENTO
+        next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
+        next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
+        next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
         
         if (next_slot_r, next_slot_c) in game.owned_slots:
-            jogador.update(direcao_x, direcao_y, decorrido, None) # None para limites, já que estamos checando manualmente
+            jogador.update(direcao_x, direcao_y, decorrido)
         else:
-            jogador.update(0, 0, decorrido, None) # Para a animação
+            jogador.update(0, 0, decorrido)
         
         camera.center_on(jogador.rect)
 
-        # --- LÓGICA DE DESENHO ---
+        # LÓGICA DE DESENHO
         mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
-        desenhar_mundo(game, jogador, caminhao, camera, mouse_world_pos, selected_slot_type)
+        desenhar_mundo(game, grid_maquinas, jogador, caminhao, camera, mouse_world_pos, selected_slot_type)
         desenhar_interface(game, selected_slot_type, pos_mouse_tela)
         
+        TELA.blit(TELA_JOGO, (0,0))
         pygame.display.flip()
 
     pygame.quit()
