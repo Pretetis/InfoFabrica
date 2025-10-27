@@ -89,18 +89,36 @@ def get_cell_from_world_pos(world_x, world_y):
     return cell_row, cell_col
 
 # --- FUNÇÕES DE DESENHO ---
-def desenhar_interface(game, selected_slot_type, pos_mouse):
+# --- MODIFICADO: Adiciona 'jogador' como parâmetro
+def desenhar_interface(game, jogador, selected_slot_type, pos_mouse):
     TELA_JOGO.fill(COR_PAINEL, (0, 0, 400, JOGO_ALTURA))
     pygame.draw.rect(TELA_JOGO,COR_PAINEL,(0,0,JOGO_LARGURA,80))
     info=[f"Turno: {game.turno}",f"Tempo: {int(game.tempo_restante)}s",f"Dinheiro: ${game.dinheiro}",f"Reputação: {game.reputacao}"]
     for i, linha in enumerate(info): TELA_JOGO.blit(FONTE.render(linha, True, COR_TEXTO), (20 + i * 250, 30))
     y_painel=100
-    TELA_JOGO.blit(FONTE_TITULO.render("Estoque:",True,COR_TITULO),(20,y_painel));y_painel+=30
+    
+    # --- ESTOQUE (Do caminhão/global - o que foi entregue) ---
+    TELA_JOGO.blit(FONTE_TITULO.render("Estoque (Global):",True,COR_TITULO),(20,y_painel));y_painel+=30
     if game.estoque:
         for k,v in game.estoque.items(): TELA_JOGO.blit(FONTE.render(f"{k}: {v}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
     else: TELA_JOGO.blit(FONTE.render("Vazio",True,COR_TEXTO),(30,y_painel));y_painel+=20
+    
+    # --- NOVO: INVENTÁRIO DO JOGADOR ---
+    y_painel+=20
+    carga_atual = sum(jogador.inventario.values())
+    texto_inv = f"Inventário Jogador: ({carga_atual}/{jogador.carga_maxima})"
+    TELA_JOGO.blit(FONTE_TITULO.render(texto_inv, True, COR_TITULO), (20, y_painel))
+    y_painel += 30
+    if jogador.inventario:
+        for k,v in jogador.inventario.items(): 
+            TELA_JOGO.blit(FONTE.render(f"{k}: {v}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
+    else: 
+        TELA_JOGO.blit(FONTE.render("Vazio",True,COR_TEXTO),(30,y_painel));y_painel+=20
+    # ------------------------------------
+
     y_painel+=20;TELA_JOGO.blit(FONTE_TITULO.render("Máquinas (Inventário):",True,COR_TITULO),(20,y_painel));y_painel+=30
     for maquina in game.maquinas: TELA_JOGO.blit(FONTE.render(f"- {maquina.tipo}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
+    
     y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
     botoes_loja_maquinas = []
     for i,modelo in enumerate(game.loja_maquinas):
@@ -109,6 +127,26 @@ def desenhar_interface(game, selected_slot_type, pos_mouse):
         pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2)
         TELA_JOGO.blit(FONTE.render(f"{modelo['tipo']} | P:{modelo['producao']} | ${modelo['custo']}",True,COR_TEXTO),(30,y_painel+7))
         botoes_loja_maquinas.append((rect,modelo));y_painel+=45
+    
+    # --- NOVO: PAINEL DE PEDIDOS ATIVOS ---
+    y_painel+=15
+    TELA_JOGO.blit(FONTE_TITULO.render("Pedidos Ativos:",True,COR_TITULO),(20,y_painel))
+    y_painel+=30
+    pedidos_ativos = [p for p in game.pedidos if not p.entregue]
+    if pedidos_ativos:
+        for pedido in pedidos_ativos:
+            prazo_restante = pedido.prazo - game.turno
+            cor_prazo = COR_TEXTO
+            if prazo_restante <= 1: cor_prazo = VERMELHO_BRILHANTE
+            elif prazo_restante <= 3: cor_prazo = AMARELO_BRILHANTE
+            texto = f"- {pedido.quantidade}x {pedido.tipo} (Prazo: {prazo_restante} turnos)"
+            TELA_JOGO.blit(FONTE.render(texto, True, cor_prazo),(30,y_painel))
+            y_painel+=20
+    else:
+        TELA_JOGO.blit(FONTE.render("Nenhum pedido ativo",True,COR_TEXTO),(30,y_painel))
+        y_painel+=20
+    # ---------------------------------------
+
     y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Slots:",True,COR_TITULO),(20,y_painel));y_painel+=30
     botoes_loja_slots = []
     for tipo, dados in game.loja_slots.items():
@@ -145,6 +183,14 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
             pos_y = r * TAMANHO_CELULA + offset_visual
             rect_maquina = pygame.Rect(pos_x, pos_y, TAMANHO_CELULA, TAMANHO_CELULA)
             TELA_JOGO.blit(IMG_MAQUINA_ESTATICA, camera.apply_to_rect(rect_maquina))
+            
+            # --- NOVO: Feedback visual para peças prontas ---
+            if maquina.pecas_para_coletar > 0:
+                # Desenha um pequeno ícone ou contador
+                texto_pecas = FONTE.render(f"{maquina.pecas_para_coletar}", True, VERDE_BRILHANTE)
+                pos_texto = (rect_maquina.centerx - texto_pecas.get_width() // 2, rect_maquina.top - 20)
+                TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_texto, texto_pecas.get_size())))
+
 
     if selected_slot_type:
         mouse_slot_r, mouse_slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
@@ -214,12 +260,56 @@ def main():
                 elif evento.key in (pygame.K_UP, pygame.K_w): direcao_y = -1
                 elif evento.key in (pygame.K_DOWN, pygame.K_s): direcao_y = 1
                 
-                # --- NOVO (Request 1) ---
-                if evento.key == pygame.K_e: # Interagir
+                # --- LÓGICA 'E' (INTERAGIR) TOTALMENTE MODIFICADA ---
+                if evento.key == pygame.K_e: 
+                    # 1. TENTAR DESCARREGAR NO CAMINHÃO
                     if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
+                        if jogador.inventario:
+                            for tipo, qtd in jogador.inventario.items():
+                                caminhao.receber_carga(tipo, qtd)
+                            print(f"Descarregou {jogador.inventario} no caminhão.")
+                            jogador.inventario.clear()
+                        else:
+                            print("Inventário vazio, nada para descarregar.")
+                    
+                    # 2. TENTAR PEGAR DE UMA MÁQUINA
+                    else:
+                        cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
+                        if (cell_r, cell_c) in grid_maquinas:
+                            # Pega a primeira máquina na célula (ou a mais próxima)
+                            maquina_na_celula = grid_maquinas[(cell_r, cell_c)][0] 
+                            
+                            if maquina_na_celula.pecas_para_coletar > 0:
+                                # Calcula espaço livre no inventário do jogador
+                                carga_atual_jogador = sum(jogador.inventario.values())
+                                espaco_livre = jogador.carga_maxima - carga_atual_jogador
+                                
+                                if espaco_livre > 0:
+                                    tipo_peca = maquina_na_celula.tipo
+                                    
+                                    # Permite pegar se o inventário estiver vazio OU se já tiver esse tipo de peça
+                                    if not jogador.inventario or tipo_peca in jogador.inventario:
+                                        quantidade_a_pegar = min(maquina_na_celula.pecas_para_coletar, espaco_livre)
+                                        
+                                        # Adiciona ao inventário do jogador
+                                        jogador.inventario[tipo_peca] = jogador.inventario.get(tipo_peca, 0) + quantidade_a_pegar
+                                        # Remove da máquina
+                                        maquina_na_celula.pecas_para_coletar -= quantidade_a_pegar
+                                        
+                                        print(f"Pegou {quantidade_a_pegar}x {tipo_peca}. Máquina agora tem {maquina_na_celula.pecas_para_coletar}.")
+                                    else:
+                                        print("Inventário cheio ou com item de outro tipo! Esvazie no caminhão.")
+                                else:
+                                    print("Inventário do jogador está cheio!")
+                            else:
+                                print("Máquina vazia, aguardando produção.")
+                
+                # --- NOVO: TECLA 'T' PARA TERMINAR O TURNO ---
+                if evento.key == pygame.K_t:
+                    if caminhao and caminhao.estado == 'PARADO':
                         caminhao.iniciar_partida()
                         game.estado_jogo = 'CAMINHAO_PARTINDO' # Pausa o jogador
-                        print("Caminhão partindo!")
+                        print("Turno encerrado manualmente! Caminhão partindo...")
 
                 # --- NOVO (Request 3) ---
                 if evento.key == pygame.K_f:
@@ -258,7 +348,8 @@ def main():
                 elif evento.key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s): direcao_y = 0
             if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
                 if pos_mouse_tela[0] < 400:
-                    b_maquinas, b_slots = desenhar_interface(game, selected_slot_type, pos_mouse_tela)
+                    # --- MODIFICADO: Passa 'jogador' ---
+                    b_maquinas, b_slots = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela)
                     for rect, tipo in b_slots:
                         if rect.collidepoint(pos_mouse_tela): selected_slot_type = tipo if selected_slot_type != tipo else None
                     
@@ -320,7 +411,9 @@ def main():
         
         # --- MODIFICADO (Request 1, 3) ---
         desenhar_mundo(game, grid_maquinas, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type)
-        desenhar_interface(game, selected_slot_type, pos_mouse_tela)
+        
+        # --- MODIFICADO: Passa 'jogador' ---
+        desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela)
         
         TELA.blit(TELA_JOGO, (0,0))
         pygame.display.flip()

@@ -31,7 +31,7 @@ class Caminhao:
                     game_state.produzir_nas_maquinas(grid) # Chama a produção
                     game_state.avancar_turno() # Avança o turno
                     self.iniciar_retorno() # <--- Chama a próxima parte da animação
-                elif self.estado == 'VOLTANDO':
+                if self.estado == 'VOLTANDO':
                     # self.rect.x += self.velocidade * dt # Original
                     self.rect.y += self.velocidade * dt # Novo (Move para Baixo)
 

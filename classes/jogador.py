@@ -18,6 +18,11 @@ class Jogador:
         self.tamanho_celula = tamanho_celula
         self.velocidade = 120
         
+        # --- NOVO: INVENTÁRIO DO JOGADOR ---
+        self.inventario = {} # Ex: {"Motor V1": 10}
+        self.carga_maxima = 20 # Limite de peças que o jogador pode carregar
+        # ------------------------------------
+
         # Posições de Ponto Flutuante para movimento preciso
         self.pos_x_px = float(x)
         self.pos_y_px = float(y)

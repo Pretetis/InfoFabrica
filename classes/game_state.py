@@ -36,9 +36,9 @@ class GameState:
         # self.owned_slots[(0, 0)] = "meio" # Original
         
         # --- NOVO (Request 2) ---
-        self.owned_slots[(-1, 0)] = "doca"    # Slot de Doca
-        self.owned_slots[(0, 0)] = "meio"     # Slot Meio (Abaixo da doca)
-        self.owned_slots[(1, 0)] = "meio"     # Slot Meio (Abaixo do (0,0))
+        self.owned_slots[(0, 0)] = "doca"    # Slot de Doca
+        self.owned_slots[(1, 0)] = "meio"     # Slot Meio (Abaixo da doca)
+        self.owned_slots[(1, 1)] = "meio"     # Slot Meio (Abaixo do (0,0))
         self.owned_slots[(0, 1)] = "meio"     # Slot Meio (À direita do (0,0))
         # -------------------------
 
@@ -82,6 +82,8 @@ class GameState:
         for (r, c), maquinas_na_celula in grid.items():
             for maquina in maquinas_na_celula:
                  if isinstance(maquina, Maquina):
+                    # --- CORREÇÃO: REVERTIDO PARA A LÓGICA ORIGINAL ---
+                    # A produção agora fica "na máquina" esperando o jogador pegar.
                     maquina.produzir()
 
 
