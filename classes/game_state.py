@@ -5,7 +5,7 @@ class GameState:
     def __init__(self):
         self.turno = 1
         self.tempo_restante = 60
-        self.dinheiro = 1000
+        self.dinheiro = 100000
         self.reputacao = 150
         self.estoque = {}
         self.pedidos = []

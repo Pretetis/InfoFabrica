@@ -189,7 +189,7 @@ def main():
                     for rect, modelo in b_maquinas:
                         if rect.collidepoint(pos_mouse_tela) and game.dinheiro >= modelo["custo"]:
                             game.dinheiro -= modelo['custo']
-                            nova_maquina = Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),1,1,animacao=ANIMACAO_MAquina_M1)
+                            nova_maquina = Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),1,1,animacao=ANIMACAO_MAQUINA_M1)
                             game.maquinas.append(nova_maquina)
                             print(f"Máquina '{modelo['tipo']}' comprada e adicionada ao inventário!")
                 else:
