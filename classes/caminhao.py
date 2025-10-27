@@ -12,10 +12,12 @@ class Caminhao:
         # --- NOVO: Armazena a altura do slot
         self.slot_altura = slot_altura_px
         # Define o "ponto de fuga" (a borda superior do slot da doca)
-        self.y_topo_slot = self.pos_base.y - (self.slot_altura / 2)
+        self.y_topo_slot = self.pos_base.y - (self.slot_altura / 2) +80
         # -------------------------------
 
-        self.area_carga = pygame.Rect(x - self.largura / 2, y + self.altura / 2, self.largura, 60) 
+        #self.area_carga = pygame.Rect(x - self.largura / 2, y + self.altura / 2, self.largura, 60) 
+        nova_y = (y + self.altura / 2) - 60 # Termina na borda inferior do caminhão
+        self.area_carga = pygame.Rect(x - self.largura / 2, nova_y, self.largura, 60)
 
         self.estado = 'PARADO'  # PARADO, PARTINDO, VOLTANDO
         self.velocidade = 350 
@@ -64,7 +66,7 @@ class Caminhao:
         # Desenha a área de carga (apenas se o caminhão estiver parado)
         if self.estado == 'PARADO':
             area_carga_na_tela = camera.apply_to_rect(self.area_carga)
-            pygame.draw.rect(surface, (255, 200, 0, 150), area_carga_na_tela, 2)
+            # pygame.draw.rect(surface, (255, 200, 0, 150), area_carga_na_tela, 2)
         
         # Desenha a carga atual do caminhão
         if self.carga and self.rect.centery > self.y_topo_slot:
