@@ -19,33 +19,28 @@ class Caminhao:
         self.carga = {} # Ex: {"Motor V1": 5}
 
     def update(self, dt, game_state, grid):
-        # --- MODIFICADO (Request 1: Lógica Top-Down) ---
-        if self.estado == 'PARTINDO':
-            # self.rect.x -= self.velocidade * dt # Original
-            self.rect.y -= self.velocidade * dt # Novo (Move para Cima)
-            
-            # Se saiu da tela
-            # if self.rect.right < 0: # Original
-            if self.rect.bottom < 0: # Novo
-                self.processar_entrega(game_state)
-                game_state.produzir_nas_maquinas(grid) # Chama a produção
-                game_state.avancar_turno() # Avança o turno
-                self.iniciar_retorno()
+            # --- MODIFICADO (Request 1: Lógica Top-Down) ---
+            if self.estado == 'PARTINDO':
+                # self.rect.x -= self.velocidade * dt # Original
+                self.rect.y -= self.velocidade * dt # Novo (Move para Cima)
+                
+                # Se saiu da tela
+                # if self.rect.right < 0: # Original
+                if self.rect.bottom < 0: # Novo (Quando o caminhão some em cima)
+                    self.processar_entrega(game_state)
+                    game_state.produzir_nas_maquinas(grid) # Chama a produção
+                    game_state.avancar_turno() # Avança o turno
+                    self.iniciar_retorno() # <--- Chama a próxima parte da animação
+                elif self.estado == 'VOLTANDO':
+                    # self.rect.x += self.velocidade * dt # Original
+                    self.rect.y += self.velocidade * dt # Novo (Move para Baixo)
 
-        elif self.estado == 'VOLTANDO':
-            # self.rect.x += self.velocidade * dt # Original
-            self.rect.y += self.velocidade * dt # Novo (Move para Baixo)
-
-            # Se voltou para a posição original
-            # if self.rect.x >= self.pos_base.x: # Original
-            if self.rect.centery >= self.pos_base.y: # Novo
-                self.rect.center = self.pos_base # Reposiciona no centro
-                self.estado = 'PARADO'
-                game_state.estado_jogo = 'JOGANDO'
-        
-        # Atualizar a area_carga para seguir o caminhão
-        self.area_carga.midtop = self.rect.midbottom
-        # ----------------------------------------------
+                    # Se voltou para a posição original
+                    # if self.rect.x >= self.pos_base.x: # Original
+                    if self.rect.centery >= self.pos_base.y: # Novo
+                        self.rect.center = self.pos_base # Reposiciona no centro
+                        self.estado = 'PARADO'
+                        game_state.estado_jogo = 'JOGANDO' # Libera o jogador
 
 
     def draw(self, surface, fonte, camera): # --- MODIFICADO: Adiciona 'camera'
@@ -74,11 +69,11 @@ class Caminhao:
         self.estado = 'PARTINDO'
 
     def iniciar_retorno(self):
-        # --- MODIFICADO (Request 1: Lógica Top-Down) ---
-        # self.rect.x = -self.largura - 20 # Original
-        self.rect.y = -self.altura - 20 # Novo (Começa fora da tela, em cima)
-        self.estado = 'VOLTANDO'
-        # ----------------------------------------------
+            # --- MODIFICADO (Request 1: Lógica Top-Down) ---
+            # self.rect.x = -self.largura - 20 # Original
+            self.rect.y = -self.altura - 20 # Novo (Começa fora da tela, em cima)
+            self.estado = 'VOLTANDO'
+            # --------------------------------------------------------------------
 
     def receber_carga(self, tipo_item, quantidade):
         if tipo_item not in self.carga:

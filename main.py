@@ -49,7 +49,7 @@ ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquina
 # --- NOVO (Request 1, 3, 4) ---
 try:
     IMG_CAMINHAO_LOGICA = pygame.image.load("assets/maquinas/caminhao/caminhao2.png").convert_alpha()
-    IMG_CAMINHAO_LOGICA = pygame.transform.scale(IMG_CAMINHAO_LOGICA, (int(TAMANHO_CELULA * 1.5), int(TAMANHO_CELULA * 1.5)))
+    IMG_CAMINHAO_LOGICA = pygame.transform.scale(IMG_CAMINHAO_LOGICA, (int(TAMANHO_CELULA * 4), int(TAMANHO_CELULA * 4)))
 except Exception as e:
     print(f"Erro ao carregar caminhao2.png: {e}")
     IMG_CAMINHAO_LOGICA = pygame.Surface((TAMANHO_CELULA * 1.5, TAMANHO_CELULA * 1.5)) # Placeholder
@@ -275,16 +275,35 @@ def main():
                         if game.expandir_fabrica(slot_r, slot_c, selected_slot_type): selected_slot_type = None
 
         # --- MODIFICADO (Request 1) ---
+        # --- MODIFICADO (Request 1) ---
         # LÓGICA DE ATUALIZAÇÃO DE MOVIMENTO
         if game.estado_jogo == 'JOGANDO':
-            next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
-            next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
-            next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
             
-            if (next_slot_r, next_slot_c) in game.owned_slots:
-                jogador.update(direcao_x, direcao_y, decorrido)
-            else:
-                jogador.update(0, 0, decorrido) # Trava o movimento
+            # --- CORREÇÃO: FAZ O CONTADOR DO TURNO DIMINUIR ---
+            game.tempo_restante -= decorrido
+            # ----------------------------------------------------
+
+            # --- NOVO: FORÇA O FIM DO TURNO QUANDO O TEMPO ACABA ---
+            if game.tempo_restante <= 0:
+                game.tempo_restante = 0 # Trava em 0
+                
+                # Verifica se o caminhão está pronto para partir (evita bugs)
+                if caminhao and caminhao.estado == 'PARADO':
+                    caminhao.iniciar_partida()
+                    game.estado_jogo = 'CAMINHAO_PARTINDO' # Trava o jogador
+                    print("Tempo esgotado! Caminhão partindo...")
+            # ------------------------------------------------------
+            
+            # Lógica de movimento (só executa se o tempo não tiver acabado de acabar)
+            if game.estado_jogo == 'JOGANDO': # Checa de novo, pois o bloco acima pode ter mudado
+                next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
+                next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
+                next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
+                
+                if (next_slot_r, next_slot_c) in game.owned_slots:
+                    jogador.update(direcao_x, direcao_y, decorrido)
+                else:
+                    jogador.update(0, 0, decorrido) # Trava o movimento
         else:
              jogador.update(0, 0, decorrido) # Para o jogador se o caminhão estiver partindo
         
