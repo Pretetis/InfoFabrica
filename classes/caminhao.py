@@ -1,64 +1,76 @@
 import pygame
+import random 
 
 COR_TITULO=(255,255,255)
 class Caminhao:
-    def __init__(self, x, y, imagem):
+    def __init__(self, x, y, imagem, slot_altura_px): # <--- 1. RECEBE A ALTURA DO SLOT
         self.imagem = imagem
         self.largura, self.altura = self.imagem.get_size()
-        # --- MODIFICADO (Request 1) ---
         self.pos_base = pygame.math.Vector2(x, y)
-        self.rect = self.imagem.get_rect(center=self.pos_base) # Usar 'center'
+        self.rect = self.imagem.get_rect(center=self.pos_base) 
         
-        # Área de interação para o jogador (atrás do caminhão)
-        # self.area_carga = pygame.Rect(x + self.largura, y, 60, self.altura) # Original (Lado)
-        self.area_carga = pygame.Rect(x - self.largura / 2, y + self.altura / 2, self.largura, 60) # Novo (Abaixo)
+        # --- NOVO: Armazena a altura do slot
+        self.slot_altura = slot_altura_px
+        # Define o "ponto de fuga" (a borda superior do slot da doca)
+        self.y_topo_slot = self.pos_base.y - (self.slot_altura / 2)
         # -------------------------------
 
+        self.area_carga = pygame.Rect(x - self.largura / 2, y + self.altura / 2, self.largura, 60) 
+
         self.estado = 'PARADO'  # PARADO, PARTINDO, VOLTANDO
-        self.velocidade = 350 # Pixels por segundo
-        self.carga = {} # Ex: {"Motor V1": 5}
+        self.velocidade = 350 
+        self.carga = {} 
 
     def update(self, dt, game_state, grid):
-            # --- MODIFICADO (Request 1: Lógica Top-Down) ---
             if self.estado == 'PARTINDO':
-                # self.rect.x -= self.velocidade * dt # Original
-                self.rect.y -= self.velocidade * dt # Novo (Move para Cima)
+                self.rect.y -= self.velocidade * dt 
                 
-                # Se saiu da tela
-                # if self.rect.right < 0: # Original
-                if self.rect.bottom < 0: # Novo (Quando o caminhão some em cima)
+                # --- 2. CORREÇÃO DA ANIMAÇÃO ---
+                # Verifica se o *centro* do caminhão passou do topo do slot
+                if self.rect.centery < self.y_topo_slot:
                     self.processar_entrega(game_state)
-                    game_state.produzir_nas_maquinas(grid) # Chama a produção
-                    game_state.avancar_turno() # Avança o turno
-                    self.iniciar_retorno() # <--- Chama a próxima parte da animação
-                if self.estado == 'VOLTANDO':
-                    # self.rect.x += self.velocidade * dt # Original
-                    self.rect.y += self.velocidade * dt # Novo (Move para Baixo)
+                    game_state.produzir_nas_maquinas(grid) 
+                    game_state.avancar_turno() 
+                    self.iniciar_retorno() 
+            
+            # --- 3. CORREÇÃO DO BUG DE TRAVAMENTO ---
+            # Deve ser um 'if' independente, e NÃO um 'elif'
+            if self.estado == 'VOLTANDO':
+                    self.rect.y += self.velocidade * dt 
 
                     # Se voltou para a posição original
-                    # if self.rect.x >= self.pos_base.x: # Original
-                    if self.rect.centery >= self.pos_base.y: # Novo
-                        self.rect.center = self.pos_base # Reposiciona no centro
+                    if self.rect.centery >= self.pos_base.y: 
+                        self.rect.center = self.pos_base 
                         self.estado = 'PARADO'
                         game_state.estado_jogo = 'JOGANDO' # Libera o jogador
 
 
-    def draw(self, surface, fonte, camera): # --- MODIFICADO: Adiciona 'camera'
-        # --- MODIFICADO (Request 1: Aplicar Câmera) ---
+    def draw(self, surface, fonte, camera): 
         pos_na_tela = camera.apply_to_rect(self.rect)
-        surface.blit(self.imagem, pos_na_tela)
         
-        # Desenha um contorno na área de carga para feedback visual
-        area_carga_na_tela = camera.apply_to_rect(self.area_carga)
-        pygame.draw.rect(surface, (255, 200, 0, 150), area_carga_na_tela, 2)
-        # -----------------------------------------------
+        # Lógica de vibração (mantida)
+        pos_final_blit = pos_na_tela
+        if self.estado == 'PARTINDO' or self.estado == 'VOLTANDO':
+            offset_x = random.randint(-1, 1) 
+            offset_y = random.randint(-1, 1) 
+            pos_final_blit = pos_na_tela.move(offset_x, offset_y)
+        
+        # --- 4. CORREÇÃO DA ANIMAÇÃO (DESENHO) ---
+        # Só desenha o caminhão se ele estiver "dentro" do slot
+        # (Se o centro dele estiver abaixo do topo do slot)
+        if self.rect.centery > self.y_topo_slot:
+            surface.blit(self.imagem, pos_final_blit) 
 
+        # Desenha a área de carga (apenas se o caminhão estiver parado)
+        if self.estado == 'PARADO':
+            area_carga_na_tela = camera.apply_to_rect(self.area_carga)
+            pygame.draw.rect(surface, (255, 200, 0, 150), area_carga_na_tela, 2)
+        
         # Desenha a carga atual do caminhão
-        if self.carga:
+        if self.carga and self.rect.centery > self.y_topo_slot:
             y_offset = 0
             for item, qtd in self.carga.items():
                 texto_carga = fonte.render(f"{item}: {qtd}", True, COR_TITULO)
-                # --- MODIFICADO (Request 1: Posicionar texto relativo à tela) ---
                 pos = (pos_na_tela.centerx - texto_carga.get_width() / 2, pos_na_tela.y - 25 - y_offset)
                 surface.blit(texto_carga, pos)
                 y_offset += 20
@@ -69,9 +81,9 @@ class Caminhao:
         self.estado = 'PARTINDO'
 
     def iniciar_retorno(self):
-            # --- MODIFICADO (Request 1: Lógica Top-Down) ---
-            # self.rect.x = -self.largura - 20 # Original
-            self.rect.y = -self.altura - 20 # Novo (Começa fora da tela, em cima)
+            # --- 5. CORREÇÃO DA ANIMAÇÃO (RETORNO) ---
+            # Posiciona o caminhão "acima" da porta, pronto para descer
+            self.rect.centery = self.y_topo_slot - (self.altura / 2)
             self.estado = 'VOLTANDO'
             # --------------------------------------------------------------------
 
@@ -93,9 +105,9 @@ class Caminhao:
                 if self.carga[pedido.tipo] >= pedido.quantidade:
                     print(f"Pedido de {pedido.quantidade}x {pedido.tipo} entregue!")
                     pedido.entregue = True
-                    recompensa = pedido.quantidade * 100 # Exemplo de recompensa
+                    recompensa = pedido.quantidade * 100 
                     game_state.dinheiro += recompensa
                     game_state.reputacao += 10
-                    pedidos_a_remover.append(pedido) # Marcar para remoção posterior se quiser
+                    pedidos_a_remover.append(pedido) 
         
-        self.carga.clear() # Esvazia o caminhão após a entrega
+        self.carga.clear()

@@ -233,8 +233,7 @@ def main():
         # Centro do slot de doca
         pos_caminhao_x = (doca_slot_c * SLOT_LARGURA_PX) + (SLOT_LARGURA_PX / 2)
         pos_caminhao_y = (doca_slot_r * SLOT_ALTURA_PX) + (SLOT_ALTURA_PX / 2)
-        caminhao = Caminhao(pos_caminhao_x, pos_caminhao_y, IMG_CAMINHAO_LOGICA)
-        
+        caminhao = Caminhao(pos_caminhao_x, pos_caminhao_y, IMG_CAMINHAO_LOGICA, SLOT_ALTURA_PX)
         # Coloca o jogador abaixo da área de carga do caminhão
         start_pos_x = pos_caminhao_x
         start_pos_y = caminhao.area_carga.bottom + 30
