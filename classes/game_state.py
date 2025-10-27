@@ -33,7 +33,15 @@ class GameState:
 
     def _initialize_starting_factory(self):
         # O jogador começa no slot (0, 0) do grid infinito com o tipo "meio"
-        self.owned_slots[(0, 0)] = "meio"
+        # self.owned_slots[(0, 0)] = "meio" # Original
+        
+        # --- NOVO (Request 2) ---
+        self.owned_slots[(-1, 0)] = "doca"    # Slot de Doca
+        self.owned_slots[(0, 0)] = "meio"     # Slot Meio (Abaixo da doca)
+        self.owned_slots[(1, 0)] = "meio"     # Slot Meio (Abaixo do (0,0))
+        self.owned_slots[(0, 1)] = "meio"     # Slot Meio (À direita do (0,0))
+        # -------------------------
+
 
     def expandir_fabrica(self, slot_row, slot_col, slot_type):
         if slot_type not in self.loja_slots:
@@ -66,11 +74,16 @@ class GameState:
         return False
 
     def produzir_nas_maquinas(self, grid):
-        for linha in grid:
-            for celula_lista in linha:
-                for maquina in celula_lista:
-                    if isinstance(maquina, Maquina):
-                        maquina.produzir()
+        # --- MODIFICADO (Request 1) ---
+        # A lógica de produção foi movida para a classe Caminhao
+        # para garantir que só ocorra quando o turno avançar.
+        # Esta função ainda é chamada pelo caminhão, está correto.
+        print("Produzindo em todas as máquinas...")
+        for (r, c), maquinas_na_celula in grid.items():
+            for maquina in maquinas_na_celula:
+                 if isinstance(maquina, Maquina):
+                    maquina.produzir()
+
 
     def avancar_turno(self):
         self.turno += 1

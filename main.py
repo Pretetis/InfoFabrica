@@ -28,7 +28,7 @@ class Camera:
 # --- Início do Código Principal ---
 pygame.init()
 # --- CONFIGURAÇÕES ---
-JOGO_LARGURA, JOGO_ALTURA = 1200, 600
+JOGO_LARGURA, JOGO_ALTURA = 1800, 1000
 TELA = pygame.display.set_mode((JOGO_LARGURA, JOGO_ALTURA), pygame.RESIZABLE)
 TELA_JOGO = pygame.Surface((JOGO_LARGURA, JOGO_ALTURA))
 pygame.display.set_caption("Jogo de Gestão com Logística")
@@ -45,6 +45,24 @@ SLOT_ALTURA_PX = SLOT_ALTURA_CELULAS * TAMANHO_CELULA
 # --- IMAGENS ---
 IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_CELULA, TAMANHO_CELULA))
 ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_CELULA, TAMANHO_CELULA)) for i in range(1, 4)]
+
+# --- NOVO (Request 1, 3, 4) ---
+try:
+    IMG_CAMINHAO_LOGICA = pygame.image.load("assets/maquinas/caminhao/caminhao2.png").convert_alpha()
+    IMG_CAMINHAO_LOGICA = pygame.transform.scale(IMG_CAMINHAO_LOGICA, (int(TAMANHO_CELULA * 1.5), int(TAMANHO_CELULA * 1.5)))
+except Exception as e:
+    print(f"Erro ao carregar caminhao2.png: {e}")
+    IMG_CAMINHAO_LOGICA = pygame.Surface((TAMANHO_CELULA * 1.5, TAMANHO_CELULA * 1.5)) # Placeholder
+
+try:
+    IMG_FAIXA = pygame.image.load("assets/fabrica/faixa.png").convert_alpha()
+    IMG_FAIXA = pygame.transform.scale(IMG_FAIXA, (TAMANHO_CELULA, TAMANHO_CELULA)) # Escala para o tamanho da célula
+except Exception as e:
+    print(f"Erro ao carregar faixa.png: {e}")
+    IMG_FAIXA = pygame.Surface((TAMANHO_CELULA, TAMANHO_CELULA)) # Placeholder
+# -------------------------------
+
+
 try:
     IMG_FABRICA_TILES = {
         "meio": pygame.image.load("assets/fabrica/meio.jpg").convert(),
@@ -105,13 +123,20 @@ def desenhar_interface(game, selected_slot_type, pos_mouse):
         y_painel += 45
     return botoes_loja_maquinas, botoes_loja_slots
 
-def desenhar_mundo(game, grid, jogador, caminhao, camera, mouse_world_pos, selected_slot_type):
+# --- MODIFICADO (Request 1, 3): Aceita caminhao e grid_decoracoes
+def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type):
     TELA_JOGO.fill(COR_FUNDO)
     for (r, c), tipo_slot in game.owned_slots.items():
         if tipo_slot in IMG_FABRICA_TILES:
             slot_rect = pygame.Rect(c * SLOT_LARGURA_PX, r * SLOT_ALTURA_PX, SLOT_LARGURA_PX, SLOT_ALTURA_PX)
             TELA_JOGO.blit(IMG_FABRICA_TILES[tipo_slot], camera.apply_to_rect(slot_rect))
     
+    # --- NOVO: Desenha as decorações (faixas) (Request 3) ---
+    for (r, c), img_faixa in grid_decoracoes.items():
+        faixa_rect = pygame.Rect(c * TAMANHO_CELULA, r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+        TELA_JOGO.blit(img_faixa, camera.apply_to_rect(faixa_rect))
+    # -----------------------------------------------------
+
     # --- NOVO: Desenha as máquinas que estão no grid ---
     for (r, c), maquinas_na_celula in grid.items():
         for idx, maquina in enumerate(maquinas_na_celula):
@@ -131,19 +156,46 @@ def desenhar_mundo(game, grid, jogador, caminhao, camera, mouse_world_pos, selec
             placeholder_rect = pygame.Rect(mouse_slot_c * SLOT_LARGURA_PX, mouse_slot_r * SLOT_ALTURA_PX, SLOT_LARGURA_PX, SLOT_ALTURA_PX)
             s = pygame.Surface((SLOT_LARGURA_PX, SLOT_ALTURA_PX), pygame.SRCALPHA); s.fill((0, 255, 120, 100))
             TELA_JOGO.blit(s, camera.apply_to_rect(placeholder_rect))
+    
     jogador.draw(TELA_JOGO, camera)
+
+    # --- NOVO: Desenha o caminhão (Request 1 & 4) ---
+    if caminhao:
+        caminhao.draw(TELA_JOGO, FONTE, camera)
+    # --------------------------------------------
 
 # --- LÓGICA PRINCIPAL ---
 def main():
     game = GameState()
     # --- NOVO: Grid agora é um dicionário para o mundo infinito ---
     grid_maquinas = {}
+    grid_decoracoes = {} # --- NOVO (Request 3) ---
     
-    start_pos_x = (0.5 * SLOT_LARGURA_PX)
-    start_pos_y = (0.5 * SLOT_ALTURA_PX)
-    jogador = Jogador(start_pos_x, start_pos_y, TAMANHO_CELULA)
+    # --- MODIFICADO (Request 1, 2, 4) ---
+    # Encontrar o slot de doca inicial e posicionar jogador e caminhão
     camera = Camera(JOGO_LARGURA, JOGO_ALTURA)
     caminhao = None
+    start_pos_x, start_pos_y = (0.5 * SLOT_LARGURA_PX), (0.5 * SLOT_ALTURA_PX) # Posição Padrão
+
+    doca_slot_r, doca_slot_c = None, None
+    for (r, c), tipo in game.owned_slots.items():
+        if tipo == 'doca':
+            doca_slot_r, doca_slot_c = r, c
+            break
+    
+    if doca_slot_r is not None:
+        # Centro do slot de doca
+        pos_caminhao_x = (doca_slot_c * SLOT_LARGURA_PX) + (SLOT_LARGURA_PX / 2)
+        pos_caminhao_y = (doca_slot_r * SLOT_ALTURA_PX) + (SLOT_ALTURA_PX / 2)
+        caminhao = Caminhao(pos_caminhao_x, pos_caminhao_y, IMG_CAMINHAO_LOGICA)
+        
+        # Coloca o jogador abaixo da área de carga do caminhão
+        start_pos_x = pos_caminhao_x
+        start_pos_y = caminhao.area_carga.bottom + 30
+    
+    jogador = Jogador(start_pos_x, start_pos_y, TAMANHO_CELULA)
+    # -------------------------------------
+    
     direcao_x, direcao_y = 0, 0
     tempo_anterior = pygame.time.get_ticks()
     selected_slot_type = None
@@ -162,19 +214,44 @@ def main():
                 elif evento.key in (pygame.K_UP, pygame.K_w): direcao_y = -1
                 elif evento.key in (pygame.K_DOWN, pygame.K_s): direcao_y = 1
                 
-                # --- NOVO: Lógica de posicionamento de máquinas ---
+                # --- NOVO (Request 1) ---
+                if evento.key == pygame.K_e: # Interagir
+                    if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
+                        caminhao.iniciar_partida()
+                        game.estado_jogo = 'CAMINHAO_PARTINDO' # Pausa o jogador
+                        print("Caminhão partindo!")
+
+                # --- NOVO (Request 3) ---
+                if evento.key == pygame.K_f:
+                    cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
+                    mouse_world_pos_jogador = (jogador.rect.centerx, jogador.rect.centery)
+                    slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos_jogador[0], mouse_world_pos_jogador[1])
+
+                    if (slot_r, slot_c) in game.owned_slots:
+                        if (cell_r, cell_c) in grid_decoracoes:
+                            del grid_decoracoes[(cell_r, cell_c)]
+                            print(f"Faixa removida de {cell_r, cell_c}")
+                        else:
+                            grid_decoracoes[(cell_r, cell_c)] = IMG_FAIXA
+                            print(f"Faixa colocada em {cell_r, cell_c}")
+                
+                # --- Lógica de posicionamento de máquinas ---
                 if evento.key == pygame.K_m and game.maquinas:
                     cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
                     slot_r, slot_c = get_slot_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
                     
                     if (slot_r, slot_c) in game.owned_slots:
-                        maquina_a_colocar = game.maquinas.pop(0)
-                        
-                        if (cell_r, cell_c) not in grid_maquinas:
-                            grid_maquinas[(cell_r, cell_c)] = []
-                        
-                        grid_maquinas[(cell_r, cell_c)].append(maquina_a_colocar)
-                        print(f"Máquina colocada em {cell_r, cell_c}")
+                        # --- MODIFICADO: Checa se não é uma doca ---
+                        if game.owned_slots.get((slot_r, slot_c)) != 'doca':
+                            maquina_a_colocar = game.maquinas.pop(0)
+                            
+                            if (cell_r, cell_c) not in grid_maquinas:
+                                grid_maquinas[(cell_r, cell_c)] = []
+                            
+                            grid_maquinas[(cell_r, cell_c)].append(maquina_a_colocar)
+                            print(f"Máquina colocada em {cell_r, cell_c}")
+                        else:
+                            print("Não pode colocar máquinas na doca.")
 
             if evento.type == pygame.KEYUP:
                 if evento.key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d): direcao_x = 0
@@ -185,7 +262,6 @@ def main():
                     for rect, tipo in b_slots:
                         if rect.collidepoint(pos_mouse_tela): selected_slot_type = tipo if selected_slot_type != tipo else None
                     
-                    # --- CORRIGIDO: Lógica para comprar máquinas ---
                     for rect, modelo in b_maquinas:
                         if rect.collidepoint(pos_mouse_tela) and game.dinheiro >= modelo["custo"]:
                             game.dinheiro -= modelo['custo']
@@ -198,21 +274,33 @@ def main():
                         slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
                         if game.expandir_fabrica(slot_r, slot_c, selected_slot_type): selected_slot_type = None
 
+        # --- MODIFICADO (Request 1) ---
         # LÓGICA DE ATUALIZAÇÃO DE MOVIMENTO
-        next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
-        next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
-        next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
-        
-        if (next_slot_r, next_slot_c) in game.owned_slots:
-            jogador.update(direcao_x, direcao_y, decorrido)
+        if game.estado_jogo == 'JOGANDO':
+            next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
+            next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
+            next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
+            
+            if (next_slot_r, next_slot_c) in game.owned_slots:
+                jogador.update(direcao_x, direcao_y, decorrido)
+            else:
+                jogador.update(0, 0, decorrido) # Trava o movimento
         else:
-            jogador.update(0, 0, decorrido)
+             jogador.update(0, 0, decorrido) # Para o jogador se o caminhão estiver partindo
         
         camera.center_on(jogador.rect)
 
+        # --- NOVO (Request 1) ---
+        if caminhao:
+            caminhao.update(decorrido, game, grid_maquinas)
+        # -------------------------
+
+
         # LÓGICA DE DESENHO
         mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
-        desenhar_mundo(game, grid_maquinas, jogador, caminhao, camera, mouse_world_pos, selected_slot_type)
+        
+        # --- MODIFICADO (Request 1, 3) ---
+        desenhar_mundo(game, grid_maquinas, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type)
         desenhar_interface(game, selected_slot_type, pos_mouse_tela)
         
         TELA.blit(TELA_JOGO, (0,0))
