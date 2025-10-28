@@ -28,8 +28,8 @@ class GameState:
         self._initialize_starting_factory()
 
     def _initialize_starting_factory(self):
-        self.owned_slots[(1, 0)] = "doca"    
-        self.owned_slots[(0, 0)] = "meio"     
+        self.owned_slots[(0, 0)] = "doca"    
+        self.owned_slots[(1, 0)] = "meio"     
         self.owned_slots[(0, 1)] = "meio"     
         self.owned_slots[(1, 1)] = "meio"     
 
