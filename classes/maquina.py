@@ -27,7 +27,7 @@ class Maquina:
 
         self.pos_lin, self.pos_col = -1, -1
         self.animation_frames = animacao
-        self.current_frame_index, self.animation_timer, self.animation_speed = 0, 0, 0.15
+        self.current_frame_index, self.animation_timer, self.animation_speed = 0, 0, 0.5
 
     def update_animation(self, dt):
         if not self.animation_frames: return
