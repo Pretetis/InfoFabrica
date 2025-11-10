@@ -41,7 +41,12 @@ FONTE_GAMEOVER = pygame.font.SysFont("monospace", 72, bold=True)
 
 # --- CONFIGURAÇÕES DO GRID E SLOTS ---
 TAMANHO_CELULA = 60
-TAMANHO_MAQUINA_VISUAL = int(TAMANHO_CELULA * 1.2) # (72 pixels)
+# TAMANHO_MAQUINA_VISUAL = int(TAMANHO_CELULA * 1.2) # (72 pixels)
+
+TAMANHO_M1_VISUAL = (int(TAMANHO_CELULA * 1.2), int(TAMANHO_CELULA * 1.2)) # (72, 72) - Quadrada
+TAMANHO_M2_VISUAL = (int(TAMANHO_CELULA * 1.8), int(TAMANHO_CELULA * 1.2)) # (108, 72) - Larga (Braço Robótico)
+TAMANHO_M3_VISUAL = (int(TAMANHO_CELULA * 1.2), int(TAMANHO_CELULA * 1.8)) # (72, 108) - Alta (Torre)
+
 TAMANHO_ICONE_ITEM = 20 
 
 SLOT_LARGURA_CELULAS = 7
@@ -50,8 +55,23 @@ SLOT_LARGURA_PX = SLOT_LARGURA_CELULAS * TAMANHO_CELULA
 SLOT_ALTURA_PX = SLOT_ALTURA_CELULAS * TAMANHO_CELULA
 
 # --- IMAGENS ---
-IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL))
-ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL)) for i in range(1, 4)]
+# IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL))
+# ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL)) for i in range(1, 4)]
+
+# M1 (Fábrica de Motor)
+ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), TAMANHO_M1_VISUAL) for i in range(1, 4)]
+
+# NOVO: M2 (Fábrica de Chassi)
+ANIMACAO_MAQUINA_M2 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m2/m2{i}.png").convert_alpha(), TAMANHO_M2_VISUAL) for i in range(1, 4)]
+
+# NOVO: M3 (Fábrica de Motor Rápida)
+ANIMACAO_MAQUINA_M3 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m3/m3{i}.png").convert_alpha(), TAMANHO_M3_VISUAL) for i in range(1, 4)]
+
+ANIMACAO_MAQUINAS_VISUAIS = {
+    "M1": ANIMACAO_MAQUINA_M1,
+    "M2": ANIMACAO_MAQUINA_M2,
+    "M3": ANIMACAO_MAQUINA_M3,
+}
 
 try:
     IMG_CAMINHAO_LOGICA = pygame.image.load("assets/maquinas/caminhao/caminhao2.png").convert_alpha()
@@ -130,13 +150,30 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse):
     y_painel+=20;TELA_JOGO.blit(FONTE_TITULO.render("Máquinas (Inventário):",True,COR_TITULO),(20,y_painel));y_painel+=30
     for maquina in game.maquinas: TELA_JOGO.blit(FONTE.render(f"- {maquina.tipo}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
     
+  #  y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
+  #  botoes_loja_maquinas = []
+  #  for i,modelo in enumerate(game.loja_maquinas):
+  #      rect=pygame.Rect(20,y_painel,360,35)
+  #      cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) else COR_BOTAO_NORMAL
+  #      pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2)
+ #       TELA_JOGO.blit(FONTE.render(f"{modelo['tipo']} | P:{modelo['producao']} | ${modelo['custo']}",True,COR_TEXTO),(30,y_painel+7))
+#        botoes_loja_maquinas.append((rect,modelo));y_painel+=45
+
     y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
     botoes_loja_maquinas = []
     for i,modelo in enumerate(game.loja_maquinas):
         rect=pygame.Rect(20,y_painel,360,35)
         cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) else COR_BOTAO_NORMAL
         pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2)
-        TELA_JOGO.blit(FONTE.render(f"{modelo['tipo']} | P:{modelo['producao']} | ${modelo['custo']}",True,COR_TEXTO),(30,y_painel+7))
+        
+        # --- TEXTO DO BOTÃO MODIFICADO ---
+        # Usa o campo 'nome' (que adicionaremos) ou 'tipo' como fallback
+        nome_maquina = modelo.get('nome', modelo['tipo'])
+        prod_texto = "Multi" if isinstance(modelo['producao'], dict) else modelo['producao']
+        texto_botao = f"{nome_maquina} | P:{prod_texto} | ${modelo['custo']}"
+        TELA_JOGO.blit(FONTE.render(texto_botao,True,COR_TEXTO),(30,y_painel+7))
+        # ----------------------------------
+
         botoes_loja_maquinas.append((rect,modelo));y_painel+=45
     
     y_painel+=15
@@ -207,9 +244,6 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
             offset_visual = idx * 5
             
             img_maquina = maquina.get_current_frame()
-            if img_maquina is None:
-                img_maquina = IMG_MAQUINA_ESTATICA 
-
             cell_center_x = (c * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
             cell_center_y = (r * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
             
@@ -217,42 +251,52 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
             
             TELA_JOGO.blit(img_maquina, camera.apply_to_rect(rect_maquina))
 
-            icon = IMG_ITENS.get(maquina.tipo)
+         #   icon = IMG_ITENS.get(maquina.tipo)
             
-            if icon:
-                TELA_LARGURA = 48
-                TELA_ALTURA = 24
-                pos_x_tela = rect_maquina.centerx - (TELA_LARGURA / 2)
-                pos_y_tela = rect_maquina.top - 30 
-                
-                rect_tela = pygame.Rect(pos_x_tela, pos_y_tela, TELA_LARGURA, TELA_ALTURA)
-                rect_tela_na_camera = camera.apply_to_rect(rect_tela)
-                
-                pygame.draw.rect(TELA_JOGO, COR_PAINEL, rect_tela_na_camera)
-                pygame.draw.rect(TELA_JOGO, COR_BOTAO_BORDA, rect_tela_na_camera, 1)
+            y_offset_item = 0 # Para empilhar os ícones se houver mais de um
 
-                pos_x_icon = rect_tela.left + 2
-                pos_y_icon = rect_tela.centery - (TAMANHO_ICONE_ITEM / 2)
-                icon_rect = icon.get_rect(topleft=(pos_x_icon, pos_y_icon))
-                TELA_JOGO.blit(icon, camera.apply_to_rect(icon_rect))
-
-                if maquina.pecas_para_coletar > 0:
-                    cor_texto_qtd = VERDE_BRILHANTE
-                else:
-                    cor_texto_qtd = COR_TEXTO 
+            # Itera sobre o dicionário de peças da máquina
+            for item_tipo, pecas_count in maquina.pecas_para_coletar.items():
+                icon = IMG_ITENS.get(item_tipo) # Pega o ícone para este item
+                
+                if icon:
+                    TELA_LARGURA = 48
+                    TELA_ALTURA = 24
                     
-                texto_pecas = FONTE_PEQUENA.render(f"{maquina.pecas_para_coletar}", True, cor_texto_qtd)
-                
-                pos_x_texto = icon_rect.right + 4
-                pos_y_texto = rect_tela.centery - (texto_pecas.get_height() / 2)
-                
-                TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_x_texto, pos_y_texto, texto_pecas.get_width(), texto_pecas.get_height())))
+                    # Ajusta o Y baseado no offset
+                    pos_x_tela = rect_maquina.centerx - (TELA_LARGURA / 2)
+                    pos_y_tela = rect_maquina.top - 30 - y_offset_item 
+                    
+                    rect_tela = pygame.Rect(pos_x_tela, pos_y_tela, TELA_LARGURA, TELA_ALTURA)
+                    rect_tela_na_camera = camera.apply_to_rect(rect_tela)
+                    
+                    pygame.draw.rect(TELA_JOGO, COR_PAINEL, rect_tela_na_camera)
+                    pygame.draw.rect(TELA_JOGO, COR_BOTAO_BORDA, rect_tela_na_camera, 1)
 
-            elif maquina.pecas_para_coletar > 0:
-                texto_pecas = FONTE.render(f"{maquina.pecas_para_coletar}", True, VERDE_BRILHANTE)
-                pos_texto = (rect_maquina.centerx - texto_pecas.get_width() // 2, rect_maquina.top - 20)
-                TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_texto, texto_pecas.get_size())))
+                    pos_x_icon = rect_tela.left + 2
+                    pos_y_icon = rect_tela.centery - (TAMANHO_ICONE_ITEM / 2)
+                    icon_rect = icon.get_rect(topleft=(pos_x_icon, pos_y_icon))
+                    TELA_JOGO.blit(icon, camera.apply_to_rect(icon_rect))
 
+                    if pecas_count > 0:
+                        cor_texto_qtd = VERDE_BRILHANTE
+                    else:
+                        cor_texto_qtd = COR_TEXTO 
+                        
+                    texto_pecas = FONTE_PEQUENA.render(f"{pecas_count}", True, cor_texto_qtd)
+                    
+                    pos_x_texto = icon_rect.right + 4
+                    pos_y_texto = rect_tela.centery - (texto_pecas.get_height() / 2)
+                    
+                    TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_x_texto, pos_y_texto, texto_pecas.get_width(), texto_pecas.get_height())))
+                    
+                    y_offset_item += TELA_ALTURA + 2 # Incrementa o offset para o próximo item
+                    
+                elif pecas_count > 0: # Fallback se não houver ícone (mas houver peças)
+                    texto_pecas = FONTE.render(f"{pecas_count}x {item_tipo}", True, VERDE_BRILHANTE)
+                    pos_texto = (rect_maquina.centerx - texto_pecas.get_width() // 2, rect_maquina.top - 20 - y_offset_item)
+                    TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_texto, texto_pecas.get_size())))
+                    y_offset_item += 20
     if selected_slot_type:
         mouse_slot_r, mouse_slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
         is_valid_spot = False
@@ -413,6 +457,7 @@ def main():
                     
                     if evento.key == pygame.K_e: 
                         if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
+                            # ... (esta parte do caminhão não muda) ...
                             if jogador.inventario:
                                 for tipo, qtd in jogador.inventario.items():
                                     caminhao.receber_carga(tipo, qtd)
@@ -421,31 +466,51 @@ def main():
                             else:
                                 print("Inventário vazio, nada para descarregar.")
                         
-                        else:
+                        else: # --- SUBSTITUA ESTE BLOCO 'ELSE' ---
                             cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
                             if (cell_r, cell_c) in grid_maquinas:
                                 maquina_na_celula = grid_maquinas[(cell_r, cell_c)][0] 
                                 
-                                if maquina_na_celula.pecas_para_coletar > 0:
+                                # --- INÍCIO DA NOVA LÓGICA DE COLETA ---
+                                
+                                # 1. Descobrir qual item o jogador PODE pegar.
+                                # O jogador só pode carregar 1 tipo de item por vez.
+                                tipo_para_coletar = None
+                                
+                                if jogador.inventario:
+                                    # Se o jogador já tem itens, ele só pode pegar MAIS desse tipo.
+                                    tipo_para_coletar = list(jogador.inventario.keys())[0]
+                                else:
+                                    # Se o jogador está vazio, ele pega o PRIMEIRO item disponível na máquina.
+                                    for item_tipo, qtd in maquina_na_celula.pecas_para_coletar.items():
+                                        if qtd > 0:
+                                            tipo_para_coletar = item_tipo
+                                            break # Pega o primeiro e para
+                                
+                                # 2. Se não achamos um item (máquina vazia ou jogador com inventário incompatível)
+                                if tipo_para_coletar is None:
+                                    print("Máquina vazia ou jogador com inventário incompatível.")
+                                
+                                # 3. Checar se a máquina REALMENTE tem esse item e tentar coletar
+                                elif maquina_na_celula.pecas_para_coletar.get(tipo_para_coletar, 0) > 0:
                                     carga_atual_jogador = sum(jogador.inventario.values())
                                     espaco_livre = jogador.carga_maxima - carga_atual_jogador
                                     
                                     if espaco_livre > 0:
-                                        tipo_peca = maquina_na_celula.tipo
+                                        quantidade_na_maquina = maquina_na_celula.pecas_para_coletar[tipo_para_coletar]
+                                        quantidade_a_pegar = min(quantidade_na_maquina, espaco_livre)
                                         
-                                        if not jogador.inventario or tipo_peca in jogador.inventario:
-                                            quantidade_a_pegar = min(maquina_na_celula.pecas_para_coletar, espaco_livre)
-                                            
-                                            jogador.inventario[tipo_peca] = jogador.inventario.get(tipo_peca, 0) + quantidade_a_pegar
-                                            maquina_na_celula.pecas_para_coletar -= quantidade_a_pegar
-                                            
-                                            print(f"Pegou {quantidade_a_pegar}x {tipo_peca}. Máquina agora tem {maquina_na_celula.pecas_para_coletar}.")
-                                        else:
-                                            print("Inventário cheio ou com item de outro tipo! Esvazie no caminhão.")
+                                        jogador.inventario[tipo_para_coletar] = jogador.inventario.get(tipo_para_coletar, 0) + quantidade_a_pegar
+                                        
+                                        # Deduz do dict da máquina
+                                        maquina_na_celula.pecas_para_coletar[tipo_para_coletar] -= quantidade_a_pegar
+                                        
+                                        print(f"Pegou {quantidade_a_pegar}x {tipo_para_coletar}. Máquina agora tem {maquina_na_celula.pecas_para_coletar[tipo_para_coletar]}.")
                                     else:
                                         print("Inventário do jogador está cheio!")
                                 else:
-                                    print("Máquina vazia, aguardando produção.")
+                                    print(f"Máquina não tem (ou não tem mais) '{tipo_para_coletar}' para coletar.")
+                                # --- FIM DA NOVA LÓGICA DE COLETA ---
                     
                     if evento.key == pygame.K_t:
                         if caminhao and caminhao.estado == 'PARADO':
@@ -486,19 +551,51 @@ def main():
                     if evento.key in (pygame.K_LEFT, pygame.K_a, pygame.K_RIGHT, pygame.K_d): direcao_x = 0
                     elif evento.key in (pygame.K_UP, pygame.K_w, pygame.K_DOWN, pygame.K_s): direcao_y = 0
                 
+            #    if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
+            #        if pos_mouse_tela[0] < 400:
+            #            b_maquinas, b_slots = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela)
+            #            for rect, tipo in b_slots:
+            #                if rect.collidepoint(pos_mouse_tela): selected_slot_type = tipo if selected_slot_type != tipo else None
+            #            
+            #            for rect, modelo in b_maquinas:
+            #                if rect.collidepoint(pos_mouse_tela) and game.dinheiro >= modelo["custo"]:
+            #                    game.dinheiro -= modelo['custo']
+            #                    nova_maquina = Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),1,1,animacao=ANIMACAO_MAQUINA_M1)
+            #                    game.maquinas.append(nova_maquina)
+            #                    print(f"Máquina '{modelo['tipo']}' comprada e adicionada ao inventário!")
+            #        else:
                 if evento.type == pygame.MOUSEBUTTONDOWN and evento.button == 1:
-                    if pos_mouse_tela[0] < 400:
+                    if pos_mouse_tela[0] < 400: # Clicou no painel esquerdo
                         b_maquinas, b_slots = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela)
                         for rect, tipo in b_slots:
                             if rect.collidepoint(pos_mouse_tela): selected_slot_type = tipo if selected_slot_type != tipo else None
                         
+                        # --- LÓGICA DE COMPRA DE MÁQUINA MODIFICADA ---
                         for rect, modelo in b_maquinas:
                             if rect.collidepoint(pos_mouse_tela) and game.dinheiro >= modelo["custo"]:
                                 game.dinheiro -= modelo['custo']
-                                nova_maquina = Maquina(modelo["tipo"],modelo["producao"],modelo["custo"],modelo.get("custo_energia", 10),1,1,animacao=ANIMACAO_MAQUINA_M1)
+                                
+                                # 1. Pega a chave da animação (ex: "M1", "M2") do modelo da loja
+                                #    Usamos "M1" como padrão se a chave não existir
+                                anim_key = modelo.get("anim_key", "M1") 
+                                
+                                # 2. Busca a lista de frames de animação no dicionário
+                                animacao_maquina = ANIMACAO_MAQUINAS_VISUAIS.get(anim_key)
+                                
+                                # 3. Cria a máquina
+                                # O 'tipo' do modelo (ex: "Motor V1") é o item que ela produz
+                                nova_maquina = Maquina(
+                                    modelo["tipo"],
+                                    modelo["producao"],
+                                    modelo["custo"],
+                                    modelo.get("custo_energia", 10),
+                                    1, 1,
+                                    animacao=animacao_maquina # Passa a animação correta
+                                )
                                 game.maquinas.append(nova_maquina)
-                                print(f"Máquina '{modelo['tipo']}' comprada e adicionada ao inventário!")
-                    else:
+                                print(f"Máquina '{modelo.get('nome', modelo['tipo'])}' comprada e adicionada ao inventário!")
+                        # ----------------------------------------------------
+                    else:  
                         if selected_slot_type:
                             mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
                             slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])

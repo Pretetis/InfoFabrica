@@ -1,3 +1,4 @@
+# [classes/game_state.py]
 import random
 from classes.maquina import Maquina
 
@@ -10,10 +11,40 @@ class GameState:
         self.estoque = {}
         self.pedidos = []
         self.maquinas = []
+        
+        # --- SUBSTITUA SUA 'loja_maquinas' POR ESTA ---
         self.loja_maquinas = [
-            {"tipo": "Motor V1", "producao": 5, "custo": 300, "custo_energia": 10, "largura": 1, "altura": 1},
-            {"tipo": "Chassi Básico", "producao": 2, "custo": 500, "custo_energia": 15, "largura": 1, "altura": 1},
+            {
+                "nome": "Fábrica M1 (Motor)",
+                "tipo": "Motor V1",
+                "producao": 5, # <-- INT (produz 1 item)
+                "custo": 300, 
+                "custo_energia": 10, 
+                "largura": 1, "altura": 1,
+                "anim_key": "M1"
+            },
+            {
+                "nome": "Fábrica M2 (Chassi)",
+                "tipo": "Chassi Básico",
+                "producao": 2, # <-- INT (produz 1 item)
+                "custo": 500, 
+                "custo_energia": 15, 
+                "largura": 1, "altura": 1,
+                "anim_key": "M2"
+            },
+            # --- M3 MODIFICADA ---
+            {
+                "nome": "Fábrica M3 (Híbrida)",
+                "tipo": "Motor V1", # <-- Item principal (para ícone)
+                "producao": {"Motor V1": 7, "Chassi Básico": 3}, # <-- DICT (produz 2 itens!)
+                "custo": 1500, 
+                "custo_energia": 25, 
+                "largura": 1, "altura": 1,
+                "anim_key": "M3"
+            },
         ]
+        # ----------------------------------------------
+
         self.estado_jogo = 'JOGANDO' # 'JOGANDO', 'CAMINHAO_PARTINDO', 'GAME_OVER'
 
         self.owned_slots = {}
@@ -26,7 +57,8 @@ class GameState:
         }
         
         self._initialize_starting_factory()
-
+    
+    # ... (O restante do arquivo game_state.py permanece o mesmo) ...
     def _initialize_starting_factory(self):
         self.owned_slots[(0, 0)] = "doca"    
         self.owned_slots[(1, 0)] = "meio"     
@@ -71,33 +103,23 @@ class GameState:
                  if isinstance(maquina, Maquina):
                     maquina.produzir()
 
-    # --- NOVO MÉTODO ---
     def checar_penalidades_e_gameover(self):
-        """Verifica pedidos atrasados, aplica penalidades e checa condição de Game Over."""
         print(f"Analisando penalidades do Turno {self.turno}")
-
-        # 1. Checar pedidos atrasados (antes de incrementar o turno)
         for pedido in self.pedidos:
-            # Se o pedido não foi entregue, não foi penalizado, e o prazo estourou
             if not pedido.entregue and not pedido.penalizado and self.turno > pedido.prazo:
                 self.reputacao -= 20
-                pedido.penalizado = True # Marca para não penalizar de novo
+                pedido.penalizado = True
                 print(f"PEDIDO ATRASADO: {pedido.quantidade}x {pedido.tipo}. Reputação: -20 (Total: {self.reputacao})")
 
-        # 2. Checar condição de GAME OVER
         if self.reputacao <= -20:
             self.estado_jogo = 'GAME_OVER'
             print("GAME OVER! Reputação muito baixa.")
-            return True # Retorna True se o jogo acabou
+            return True 
         
-        return False # Retorna False se o jogo continua
+        return False 
 
 
-    # --- MÉTODO MODIFICADO (LÓGICA DE PENALIDADE REMOVIDA DAQUI) ---
     def avancar_turno(self):
-        """Apenas avança o turno e gera novos pedidos."""
-        # A lógica de penalidade e game over foi movida para 'checar_penalidades_e_gameover'
-        
         self.turno += 1
         self.tempo_restante = 60
         self.gerar_pedido()
@@ -108,10 +130,10 @@ class GameState:
             def __init__(self, tipo, quantidade, prazo):
                 self.tipo, self.quantidade, self.prazo = tipo, quantidade, prazo
                 self.entregue = False
-                self.penalizado = False # <-- Mantém o rastreador de penalidade
+                self.penalizado = False 
         
         modelo_maquina = random.choice(self.loja_maquinas)
         tipo_peca = modelo_maquina["tipo"]
         quantidade = random.randint(5, 20)
-        prazo = self.turno + random.randint(5, 10) # Prazo é o NÚMERO do turno final
+        prazo = self.turno + random.randint(5, 10) 
         self.pedidos.append(Pedido(tipo_peca, quantidade, prazo))
