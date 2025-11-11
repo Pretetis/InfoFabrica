@@ -34,7 +34,7 @@ class GameState:
             },
             # --- M3 MODIFICADA ---
             {
-                "nome": "Fábrica M3 (Híbrida)",
+                "nome": "Fábrica M3",
                 "tipo": "Motor V1", # <-- Item principal (para ícone)
                 "producao": {"Motor V1": 7, "Chassi Básico": 3}, # <-- DICT (produz 2 itens!)
                 "custo": 1500, 
