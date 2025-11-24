@@ -151,21 +151,18 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
     else: 
         TELA_JOGO.blit(FONTE.render("Vazio",True,COR_TEXTO),(30,y_painel));y_painel+=20
 
-    # --- REMOVIDO: "Máquinas (Inventário)" e Botão "Colocar" ---
-    # O código antigo de listar game.maquinas e criar o botão "Colocar" foi excluído daqui
-    # para implementar o sistema "Comprou, Colocou".
-    
-    y_painel+=20 # Espaço extra antes da loja
+    y_painel+=20
 
-    TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
+    # --- LOJA (MÁQUINAS E SLOTS) ---
+    TELA_JOGO.blit(FONTE_TITULO.render("Loja:",True,COR_TITULO),(20,y_painel));y_painel+=30
 
     botoes_loja_maquinas = []
+    
+    # 1. Desenha MÁQUINAS
     for i,modelo in enumerate(game.loja_maquinas):
         rect=pygame.Rect(20,y_painel,360,35)
         
-        # O botão fica "selecionado" se estivermos segurando essa máquina
         is_selected = (maquina_para_colocar is not None and maquina_para_colocar.custo == modelo['custo'] and maquina_para_colocar.tipo == modelo['tipo'])
-        
         cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
         cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
         
@@ -177,18 +174,51 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
         TELA_JOGO.blit(FONTE.render(texto_botao,True,COR_TEXTO),(30,y_painel+7))
 
         botoes_loja_maquinas.append((rect,modelo));y_painel+=45
+
+    # 2. Desenha SLOTS
+    botoes_loja_slots = []
+    for tipo, dados in game.loja_slots.items():
+        rect = pygame.Rect(20, y_painel, 360, 35)
+        is_selected = tipo == selected_slot_type
+        cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
+        cor_botao = COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
+        
+        pygame.draw.rect(TELA_JOGO, cor_botao, rect); pygame.draw.rect(TELA_JOGO, cor_borda, rect, 2)
+        
+        texto = f"Expandir Fábrica ({tipo.capitalize()}) | ${dados['custo']}"
+        TELA_JOGO.blit(FONTE.render(texto, True, COR_TEXTO), (30, y_painel + 7))
+        
+        botoes_loja_slots.append((rect, tipo))
+        y_painel += 45
     
     y_painel+=15
     TELA_JOGO.blit(FONTE_TITULO.render("Pedidos Ativos:",True,COR_TITULO),(20,y_painel))
 
     y_painel+=30
-    pedidos_ativos = [p for p in game.pedidos if not p.entregue]
-    if pedidos_ativos:
-        for pedido in pedidos_ativos:
+    
+    # --- LÓGICA DE EXIBIÇÃO DE PEDIDOS (MODIFICADA) ---
+    pedidos_visiveis = game.pedidos 
+    if pedidos_visiveis:
+        for pedido in pedidos_visiveis:
+            # SE O PEDIDO FALHOU (PENALIZADO), NÃO DESENHA (SOME DA TELA)
+            if pedido.penalizado:
+                continue 
+            
             prazo_restante = pedido.prazo - game.turno
+            
+            # Cores e Status
             cor_prazo = COR_TEXTO
-            if prazo_restante < 0: cor_prazo = VERMELHO_BRILHANTE
-            elif prazo_restante <= 1: cor_prazo = AMARELO_BRILHANTE
+            texto_status = f"(Prazo: {prazo_restante})"
+            
+            if pedido.entregue:
+                cor_prazo = VERDE_BRILHANTE
+                texto_status = "(ENTREGUE)"
+            elif prazo_restante < 0: 
+                # Caso raro onde atrasou mas ainda não foi processada a penalidade
+                cor_prazo = VERMELHO_BRILHANTE
+                texto_status = "(ATRASADO)"
+            elif prazo_restante <= 1: 
+                cor_prazo = AMARELO_BRILHANTE
             
             x_pos = 30
             icon = IMG_ITENS.get(pedido.tipo)
@@ -196,10 +226,7 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
                 TELA_JOGO.blit(icon, (x_pos, y_painel))
                 x_pos += TAMANHO_ICONE_ITEM + 5 
             
-            texto_prazo = f"(Prazo: {prazo_restante} turnos)"
-            if prazo_restante < 0: texto_prazo = "(ATRASADO)"
-                
-            texto = f"{pedido.quantidade}x {pedido.tipo} {texto_prazo}"
+            texto = f"{pedido.quantidade}x {pedido.tipo} {texto_status}"
             pos_y_texto = y_painel + (TAMANHO_ICONE_ITEM // 2 - FONTE.get_height() // 2)
             if not icon: pos_y_texto = y_painel
                 
@@ -209,20 +236,6 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
         TELA_JOGO.blit(FONTE.render("Nenhum pedido ativo",True,COR_TEXTO),(30,y_painel))
         y_painel+=20
 
-    y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Slots:",True,COR_TITULO),(20,y_painel));y_painel+=30
-    botoes_loja_slots = []
-    for tipo, dados in game.loja_slots.items():
-        rect = pygame.Rect(20, y_painel, 360, 35)
-        is_selected = tipo == selected_slot_type
-        cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
-        cor_botao = COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
-        pygame.draw.rect(TELA_JOGO, cor_botao, rect); pygame.draw.rect(TELA_JOGO, cor_borda, rect, 2)
-        texto = f"{tipo.capitalize()} | ${dados['custo']}"
-        TELA_JOGO.blit(FONTE.render(texto, True, COR_TEXTO), (30, y_painel + 7))
-        botoes_loja_slots.append((rect, tipo))
-        y_painel += 45
-    
-    # Retorna None no terceiro valor pois o botão "Colocar" não existe mais
     return botoes_loja_maquinas, botoes_loja_slots, None
 
 def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type, maquina_para_colocar):
@@ -452,8 +465,10 @@ def main():
     
     camera = Camera(JOGO_LARGURA, JOGO_ALTURA)
     caminhao = None
+    # Posição inicial padrão caso não ache doca
     start_pos_x, start_pos_y = (0.5 * SLOT_LARGURA_PX), (0.5 * SLOT_ALTURA_PX) 
 
+    # Procura onde está a doca para posicionar o caminhão e o jogador
     doca_slot_r, doca_slot_c = None, None
     for (r, c), tipo in game.owned_slots.items():
         if tipo == 'doca':
@@ -485,7 +500,7 @@ def main():
         tempo_anterior = agora
         pos_mouse_tela = pygame.mouse.get_pos()
         
-        # --- LÓGICA DE EVENTOS (MODIFICADA PARA GAME OVER) ---
+        # --- LÓGICA DE EVENTOS ---
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT: rodando = False
             
@@ -514,8 +529,8 @@ def main():
                         direcao_x, direcao_y = 0, 0 
                     
                     if evento.key == pygame.K_e: 
+                        # Interação com Caminhão
                         if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
-                            # ... (esta parte do caminhão não muda) ...
                             if jogador.inventario:
                                 for tipo, qtd in jogador.inventario.items():
                                     caminhao.receber_carga(tipo, qtd)
@@ -524,32 +539,24 @@ def main():
                             else:
                                 print("Inventário vazio, nada para descarregar.")
                         
-                        else: # --- SUBSTITUA ESTE BLOCO 'ELSE' ---
+                        else: 
+                            # Interação com Máquina (Coleta)
                             cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
                             if (cell_r, cell_c) in grid_maquinas:
                                 maquina_na_celula = grid_maquinas[(cell_r, cell_c)][0] 
                                 
-                                # --- INÍCIO DA NOVA LÓGICA DE COLETA ---
-                                
-                                # 1. Descobrir qual item o jogador PODE pegar.
-                                # O jogador só pode carregar 1 tipo de item por vez.
+                                # Lógica de coleta inteligente
                                 tipo_para_coletar = None
-                                
                                 if jogador.inventario:
-                                    # Se o jogador já tem itens, ele só pode pegar MAIS desse tipo.
                                     tipo_para_coletar = list(jogador.inventario.keys())[0]
                                 else:
-                                    # Se o jogador está vazio, ele pega o PRIMEIRO item disponível na máquina.
                                     for item_tipo, qtd in maquina_na_celula.pecas_para_coletar.items():
                                         if qtd > 0:
                                             tipo_para_coletar = item_tipo
-                                            break # Pega o primeiro e para
+                                            break 
                                 
-                                # 2. Se não achamos um item (máquina vazia ou jogador com inventário incompatível)
                                 if tipo_para_coletar is None:
                                     print("Máquina vazia ou jogador com inventário incompatível.")
-                                
-                                # 3. Checar se a máquina REALMENTE tem esse item e tentar coletar
                                 elif maquina_na_celula.pecas_para_coletar.get(tipo_para_coletar, 0) > 0:
                                     carga_atual_jogador = sum(jogador.inventario.values())
                                     espaco_livre = jogador.carga_maxima - carga_atual_jogador
@@ -559,22 +566,18 @@ def main():
                                         quantidade_a_pegar = min(quantidade_na_maquina, espaco_livre)
                                         
                                         jogador.inventario[tipo_para_coletar] = jogador.inventario.get(tipo_para_coletar, 0) + quantidade_a_pegar
-                                        
-                                        # Deduz do dict da máquina
                                         maquina_na_celula.pecas_para_coletar[tipo_para_coletar] -= quantidade_a_pegar
-                                        
-                                        print(f"Pegou {quantidade_a_pegar}x {tipo_para_coletar}. Máquina agora tem {maquina_na_celula.pecas_para_coletar[tipo_para_coletar]}.")
+                                        print(f"Pegou {quantidade_a_pegar}x {tipo_para_coletar}.")
                                     else:
                                         print("Inventário do jogador está cheio!")
                                 else:
-                                    print(f"Máquina não tem (ou não tem mais) '{tipo_para_coletar}' para coletar.")
-                                # --- FIM DA NOVA LÓGICA DE COLETA ---
+                                    print(f"Máquina não tem '{tipo_para_coletar}' para coletar.")
                     
                     if evento.key == pygame.K_t:
                         if caminhao and caminhao.estado == 'PARADO':
                             caminhao.iniciar_partida()
                             game.estado_jogo = 'CAMINHAO_PARTINDO' 
-                            print("Turno encerrado manually! Caminhão partindo...")
+                            print("Turno encerrado manualmente! Caminhão partindo...")
 
                     if evento.key == pygame.K_f:
                         cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
@@ -608,31 +611,22 @@ def main():
                     if evento.button == 1:
                         if pos_mouse_tela[0] < 400: # Clicou no PAINEL ESQUERDO
                             
-                            # Atualiza interface
+                            # Atualiza interface e pega cliques
                             b_maquinas, b_slots, _ = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela, maquina_para_colocar)
                             
-                            clicou_em_botao_ui = False
-                            
-                            # 1. (Antigo Botão Colocar removido)
-
-                            # 2. Lógica da Loja de Slots (Mantida igual)
+                            # Lógica da Loja de Slots
                             for rect, tipo in b_slots:
                                 if rect.collidepoint(pos_mouse_tela):
-                                    clicou_em_botao_ui = True
                                     selected_slot_type = tipo if selected_slot_type != tipo else None
                                     maquina_para_colocar = None 
 
-                            # 3. Lógica da Loja de Máquinas (ALTERADA)
+                            # Lógica da Loja de Máquinas
                             for rect, modelo in b_maquinas:
                                 if rect.collidepoint(pos_mouse_tela):
-                                    clicou_em_botao_ui = True
-                                    
-                                    # Verifica se TEM dinheiro, mas NÃO desconta ainda
                                     if game.dinheiro >= modelo['custo']:
                                         anim_key = modelo.get("anim_key", "M1") 
                                         animacao_maquina = ANIMACAO_MAQUINAS_VISUAIS.get(anim_key)
                                         
-                                        # Cria a máquina "Fantasma" imediatamente
                                         nova_maquina = Maquina(
                                             modelo["tipo"], modelo["producao"], modelo["custo"],
                                             modelo.get("custo_energia", 10), 1, 1,
@@ -648,15 +642,15 @@ def main():
                         else: # Clicou no MUNDO (direita do painel)
                             mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
                             
+                            # 1. Tentar Colocar Máquina
                             if maquina_para_colocar:
-                                # --- MODO DE COLOCAÇÃO ATIVO (COMPRA E COLOCA) ---
                                 cell_r, cell_c = get_cell_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
                                 slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
                                 
                                 # Verifica slot válido
                                 if (slot_r, slot_c) in game.owned_slots and game.owned_slots.get((slot_r, slot_c)) != 'doca':
                                     
-                                    # Verifica LIMITE de máquinas (seu pedido anterior)
+                                    # Verifica LIMITE de máquinas
                                     maquinas_no_slot_atual = 0
                                     for (m_cell_r, m_cell_c) in grid_maquinas.keys():
                                         m_slot_r = int(m_cell_r * TAMANHO_CELULA // SLOT_ALTURA_PX)
@@ -671,124 +665,111 @@ def main():
                                     
                                     # Verifica se célula está livre
                                     elif not ((cell_r, cell_c) in grid_maquinas and grid_maquinas[(cell_r, cell_c)]):
-                                        
-                                        # --- MOMENTO DA COMPRA REAL ---
                                         if game.dinheiro >= maquina_para_colocar.custo:
-                                            game.dinheiro -= maquina_para_colocar.custo # <--- DESCONTA AQUI
-                                            
+                                            game.dinheiro -= maquina_para_colocar.custo 
                                             grid_maquinas[(cell_r, cell_c)] = [maquina_para_colocar] 
                                             print(f"Compra realizada! Máquina em {(cell_r, cell_c)}")
-                                            
-                                            maquina_para_colocar = None # Finaliza a ação
+                                            maquina_para_colocar = None 
                                         else:
                                             print("Opa, dinheiro acabou antes de colocar!")
                                             maquina_para_colocar = None
                                     else:
                                         print("Célula já ocupada!")
                                 else:
-                                    print("Local inválido.")
+                                    print("Local inválido ou Doca.")
+
+                            # 2. Tentar Colocar Slot (CORREÇÃO AQUI)
+                            elif selected_slot_type:
+                                slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
+                                # Chama função do game_state que lida com validação e dinheiro
+                                if game.expandir_fabrica(slot_r, slot_c, selected_slot_type):
+                                    selected_slot_type = None # Desmarca após comprar
                                     
-        # Só atualiza o jogo se o tutorial NÃO estiver sendo exibido E NÃO for game over
+        # Atualizações do jogo (física, lógica)
         if not mostrando_tutorial and game.estado_jogo != 'GAME_OVER':
             if game.estado_jogo == 'JOGANDO':
                 
                 game.tempo_restante -= decorrido
-
                 if game.tempo_restante <= 0:
                     game.tempo_restante = 0 
-                    
                     if caminhao and caminhao.estado == 'PARADO':
                         caminhao.iniciar_partida()
                         game.estado_jogo = 'CAMINHAO_PARTINDO' 
                         print("Tempo esgotado! Caminhão partindo...")
                 
-                # --- LÓGICA DE MOVIMENTO E COLISÃO (CORRIGIDA V2) ---
-                if game.estado_jogo == 'JOGANDO':
-                    # Função auxiliar para verificar se um ponto está num slot válido
-                    def ponto_valido(x, y):
-                        sr, sc = get_slot_from_world_pos(x, y)
-                        return (sr, sc) in game.owned_slots
+                # --- LÓGICA DE MOVIMENTO E COLISÃO ---
+                def ponto_valido(x, y):
+                    sr, sc = get_slot_from_world_pos(x, y)
+                    return (sr, sc) in game.owned_slots
 
-                    # ---------------- EIXO X ----------------
-                    step_x = direcao_x * jogador.velocidade * decorrido
-                    jogador.pos_x_px += step_x
-                    jogador.rect.centerx = round(jogador.pos_x_px) # Sincroniza Rect
+                # Eixo X
+                step_x = direcao_x * jogador.velocidade * decorrido
+                jogador.pos_x_px += step_x
+                jogador.rect.centerx = round(jogador.pos_x_px)
 
-                    # 1. Colisão com MÁQUINAS (X)
-                    hitbox_jogador = jogador.rect.inflate(0, -10) # Hitbox mais estreita para passar entre máquinas
-                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
-                        if maquinas:
-                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
-                            hitbox_maquina = rect_maquina.inflate(-10, -10) # Hitbox da máquina levemente reduzida
+                hitbox_jogador = jogador.rect.inflate(0, -10)
+                for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                    if maquinas:
+                        rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                        hitbox_maquina = rect_maquina.inflate(-10, -10)
 
-                            if hitbox_jogador.colliderect(hitbox_maquina):
-                                if step_x > 0: # Indo p/ Direita -> Bateu na Esquerda da Máquina
-                                    jogador.rect.right = hitbox_maquina.left
-                                elif step_x < 0: # Indo p/ Esquerda -> Bateu na Direita da Máquina
-                                    jogador.rect.left = hitbox_maquina.right
-                                # Sincroniza o float com a nova posição física
-                                jogador.pos_x_px = float(jogador.rect.centerx)
+                        if hitbox_jogador.colliderect(hitbox_maquina):
+                            if step_x > 0: jogador.rect.right = hitbox_maquina.left
+                            elif step_x < 0: jogador.rect.left = hitbox_maquina.right
+                            jogador.pos_x_px = float(jogador.rect.centerx)
 
-                    # 2. Colisão com LIMITES DO MUNDO / SLOTS (X)
-                    # Verifica os cantos da direção do movimento
-                    if step_x > 0: # Direita: Testa canto superior e inferior direito
-                        if not ponto_valido(jogador.rect.right, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
-                            # Se saiu, empurra de volta para a borda do slot
-                            slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
-                            limite_direita = (slot_atual_c + 1) * SLOT_LARGURA_PX
-                            if jogador.rect.right > limite_direita: # Garante que não ultrapasse
-                                jogador.rect.right = limite_direita - 1
-                                jogador.pos_x_px = float(jogador.rect.centerx)
+                if step_x > 0:
+                    if not ponto_valido(jogador.rect.right, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
+                        slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
+                        limite_direita = (slot_atual_c + 1) * SLOT_LARGURA_PX
+                        if jogador.rect.right > limite_direita:
+                            jogador.rect.right = limite_direita - 1
+                            jogador.pos_x_px = float(jogador.rect.centerx)
 
-                    elif step_x < 0: # Esquerda: Testa canto superior e inferior esquerdo
-                        if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.left, jogador.rect.bottom):
-                            slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
-                            limite_esquerda = slot_atual_c * SLOT_LARGURA_PX
-                            if jogador.rect.left < limite_esquerda:
-                                jogador.rect.left = limite_esquerda + 1
-                                jogador.pos_x_px = float(jogador.rect.centerx)
+                elif step_x < 0: 
+                    if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.left, jogador.rect.bottom):
+                        slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
+                        limite_esquerda = slot_atual_c * SLOT_LARGURA_PX
+                        if jogador.rect.left < limite_esquerda:
+                            jogador.rect.left = limite_esquerda + 1
+                            jogador.pos_x_px = float(jogador.rect.centerx)
 
-                    # ---------------- EIXO Y ----------------
-                    step_y = direcao_y * jogador.velocidade * decorrido
-                    jogador.pos_y_px += step_y
-                    jogador.rect.centery = round(jogador.pos_y_px) # Sincroniza Rect
+                # Eixo Y
+                step_y = direcao_y * jogador.velocidade * decorrido
+                jogador.pos_y_px += step_y
+                jogador.rect.centery = round(jogador.pos_y_px)
 
-                    # 3. Colisão com MÁQUINAS (Y)
-                    hitbox_jogador = jogador.rect.inflate(-10, 0) # Hitbox mais baixa
-                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
-                        if maquinas:
-                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
-                            hitbox_maquina = rect_maquina.inflate(-10, -10)
+                hitbox_jogador = jogador.rect.inflate(-10, 0)
+                for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                    if maquinas:
+                        rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                        hitbox_maquina = rect_maquina.inflate(-10, -10)
 
-                            if hitbox_jogador.colliderect(hitbox_maquina):
-                                if step_y > 0: # Descendo -> Bateu no Topo da Máquina
-                                    jogador.rect.bottom = hitbox_maquina.top
-                                elif step_y < 0: # Subindo -> Bateu na Base da Máquina
-                                    jogador.rect.top = hitbox_maquina.bottom
-                                jogador.pos_y_px = float(jogador.rect.centery)
+                        if hitbox_jogador.colliderect(hitbox_maquina):
+                            if step_y > 0: jogador.rect.bottom = hitbox_maquina.top
+                            elif step_y < 0: jogador.rect.top = hitbox_maquina.bottom
+                            jogador.pos_y_px = float(jogador.rect.centery)
 
-                    # 4. Colisão com LIMITES DO MUNDO / SLOTS (Y)
-                    if step_y > 0: # Baixo
-                        if not ponto_valido(jogador.rect.left, jogador.rect.bottom) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
-                            slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
-                            limite_baixo = (slot_atual_r + 1) * SLOT_ALTURA_PX
-                            if jogador.rect.bottom > limite_baixo:
-                                jogador.rect.bottom = limite_baixo - 1
-                                jogador.pos_y_px = float(jogador.rect.centery)
+                if step_y > 0:
+                    if not ponto_valido(jogador.rect.left, jogador.rect.bottom) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
+                        slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
+                        limite_baixo = (slot_atual_r + 1) * SLOT_ALTURA_PX
+                        if jogador.rect.bottom > limite_baixo:
+                            jogador.rect.bottom = limite_baixo - 1
+                            jogador.pos_y_px = float(jogador.rect.centery)
 
-                    elif step_y < 0: # Cima
-                        if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.top):
-                            slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
-                            limite_cima = slot_atual_r * SLOT_ALTURA_PX
-                            if jogador.rect.top < limite_cima:
-                                jogador.rect.top = limite_cima + 1
-                                jogador.pos_y_px = float(jogador.rect.centery)
+                elif step_y < 0:
+                    if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.top):
+                        slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
+                        limite_cima = slot_atual_r * SLOT_ALTURA_PX
+                        if jogador.rect.top < limite_cima:
+                            jogador.rect.top = limite_cima + 1
+                            jogador.pos_y_px = float(jogador.rect.centery)
 
-                    # Atualiza a animação
-                    if step_x != 0 or step_y != 0:
-                         jogador.update(direcao_x, direcao_y, decorrido)
-                    else:
-                         jogador.update(0, 0, decorrido)
+                if step_x != 0 or step_y != 0:
+                     jogador.update(direcao_x, direcao_y, decorrido)
+                else:
+                     jogador.update(0, 0, decorrido)
             
             camera.center_on(jogador.rect)
 
@@ -801,26 +782,19 @@ def main():
                 caminhao.update(decorrido, game, grid_maquinas)
         
         else:
-            # Se o tutorial ou game over estiverem ativos, força o jogador a parar
             jogador.update(0, 0, decorrido)
 
-
-        # --- LÓGICA DE DESENHO (MODIFICADA) ---
+        # --- DESENHO ---
         mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
         
-        # 1. Desenha o mundo e a interface (sempre)
         desenhar_mundo(game, grid_maquinas, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type, maquina_para_colocar)
         b_maquinas, b_slots, b_colocar = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela, maquina_para_colocar)
         
-        # 2. Desenha o Tutorial (se ativo)
         if mostrando_tutorial:
             desenhar_tutorial(TELA_JOGO)
-            
-        # 3. Desenha o Game Over (se ativo)
         elif game.estado_jogo == 'GAME_OVER':
             desenhar_game_over(TELA_JOGO)
             
-        # 4. Atualiza a tela final
         TELA.blit(TELA_JOGO, (0,0))
         pygame.display.flip()
 
