@@ -58,14 +58,15 @@ SLOT_ALTURA_PX = SLOT_ALTURA_CELULAS * TAMANHO_CELULA
 # IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL))
 # ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL)) for i in range(1, 4)]
 
+
 # M1 (Fábrica de Motor)
-ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), TAMANHO_M1_VISUAL) for i in range(1, 4)]
+ANIMACAO_MAQUINA_M1 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), TAMANHO_M1_VISUAL) for i in range(1, 4)]
 
 # NOVO: M2 (Fábrica de Chassi)
-ANIMACAO_MAQUINA_M2 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m2/m2{i}.png").convert_alpha(), TAMANHO_M2_VISUAL) for i in range(1, 4)]
+ANIMACAO_MAQUINA_M2 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m2/m2{i}.png").convert_alpha(), TAMANHO_M2_VISUAL) for i in range(1, 4)]
 
 # NOVO: M3 (Fábrica de Motor Rápida)
-ANIMACAO_MAQUINA_M3 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m3/m3{i}.png").convert_alpha(), TAMANHO_M3_VISUAL) for i in range(1, 4)]
+ANIMACAO_MAQUINA_M3 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m3/m3{i}.png").convert_alpha(), TAMANHO_M3_VISUAL) for i in range(1, 4)]
 
 ANIMACAO_MAQUINAS_VISUAIS = {
     "M1": ANIMACAO_MAQUINA_M1,
@@ -147,57 +148,34 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
     else: 
         TELA_JOGO.blit(FONTE.render("Vazio",True,COR_TEXTO),(30,y_painel));y_painel+=20
 
-    y_painel+=20;TELA_JOGO.blit(FONTE_TITULO.render("Máquinas (Inventário):",True,COR_TITULO),(20,y_painel));y_painel+=30
-
-
-    for maquina in game.maquinas: TELA_JOGO.blit(FONTE.render(f"- {maquina.tipo}",True,COR_TEXTO),(30,y_painel)); y_painel+=20
+    # --- REMOVIDO: "Máquinas (Inventário)" e Botão "Colocar" ---
+    # O código antigo de listar game.maquinas e criar o botão "Colocar" foi excluído daqui
+    # para implementar o sistema "Comprou, Colocou".
     
-    # --- INÍCIO DO NOVO CÓDIGO DO BOTÃO "COLOCAR" ---
-    y_painel += 5 # Pequeno espaço
-    botao_colocar_maquina_rect = None # Inicializa o rect do botão
-    
-    # Só mostra o botão se houver máquinas no inventário
-    if game.maquinas:
-        maquina_obj = game.maquinas[0] # Pega o objeto da primeira máquina da fila
-        texto_botao = f"Colocar: {maquina_obj.tipo}"
-        
-        rect = pygame.Rect(30, y_painel, 340, 35)
-        
-        # O botão fica "selecionado" (amarelo) se já estivermos no modo de colocação
-        is_selected = (maquina_para_colocar is not None) 
-        
-        cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
-        cor_botao = COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
-        
-        pygame.draw.rect(TELA_JOGO, cor_botao, rect)
-        pygame.draw.rect(TELA_JOGO, cor_borda, rect, 2)
-        TELA_JOGO.blit(FONTE.render(texto_botao, True, COR_TEXTO), (40, y_painel + 7))
-        
-        botao_colocar_maquina_rect = rect # Salva o rect para detecção de clique
-        y_painel += 45
-    # --- FIM DO NOVO CÓDIGO DO BOTÃO "COLOCAR" ---
+    y_painel+=20 # Espaço extra antes da loja
 
-    y_painel+=15;TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
+    TELA_JOGO.blit(FONTE_TITULO.render("Loja de Máquinas:",True,COR_TITULO),(20,y_painel));y_painel+=30
 
-    # --- INÍCIO DO CÓDIGO FALTANTE ---
     botoes_loja_maquinas = []
     for i,modelo in enumerate(game.loja_maquinas):
         rect=pygame.Rect(20,y_painel,360,35)
-        cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) else COR_BOTAO_NORMAL
-        pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,COR_BOTAO_BORDA,rect,2)
         
-        # --- TEXTO DO BOTÃO MODIFICADO ---
+        # O botão fica "selecionado" se estivermos segurando essa máquina
+        is_selected = (maquina_para_colocar is not None and maquina_para_colocar.custo == modelo['custo'] and maquina_para_colocar.tipo == modelo['tipo'])
+        
+        cor_borda = AMARELO_BRILHANTE if is_selected else COR_BOTAO_BORDA
+        cor_botao=COR_BOTAO_HOVER if rect.collidepoint(pos_mouse) or is_selected else COR_BOTAO_NORMAL
+        
+        pygame.draw.rect(TELA_JOGO,cor_botao,rect);pygame.draw.rect(TELA_JOGO,cor_borda,rect,2)
+        
         nome_maquina = modelo.get('nome', modelo['tipo'])
         prod_texto = "Multi" if isinstance(modelo['producao'], dict) else modelo['producao']
         texto_botao = f"{nome_maquina} | P:{prod_texto} | ${modelo['custo']}"
         TELA_JOGO.blit(FONTE.render(texto_botao,True,COR_TEXTO),(30,y_painel+7))
-        # ----------------------------------
 
         botoes_loja_maquinas.append((rect,modelo));y_painel+=45
     
     y_painel+=15
-        # --- FIM DO CÓDIGO FALTANTE ---
-
     TELA_JOGO.blit(FONTE_TITULO.render("Pedidos Ativos:",True,COR_TITULO),(20,y_painel))
 
     y_painel+=30
@@ -205,13 +183,9 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
     if pedidos_ativos:
         for pedido in pedidos_ativos:
             prazo_restante = pedido.prazo - game.turno
-            
-            # --- MODIFICADO: Cor do prazo (Vermelho se < 0)
             cor_prazo = COR_TEXTO
-            if prazo_restante < 0:
-                cor_prazo = VERMELHO_BRILHANTE
-            elif prazo_restante <= 1: 
-                cor_prazo = AMARELO_BRILHANTE
+            if prazo_restante < 0: cor_prazo = VERMELHO_BRILHANTE
+            elif prazo_restante <= 1: cor_prazo = AMARELO_BRILHANTE
             
             x_pos = 30
             icon = IMG_ITENS.get(pedido.tipo)
@@ -219,18 +193,14 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
                 TELA_JOGO.blit(icon, (x_pos, y_painel))
                 x_pos += TAMANHO_ICONE_ITEM + 5 
             
-            # --- MODIFICADO: Texto do prazo
             texto_prazo = f"(Prazo: {prazo_restante} turnos)"
-            if prazo_restante < 0:
-                texto_prazo = "(ATRASADO)"
+            if prazo_restante < 0: texto_prazo = "(ATRASADO)"
                 
             texto = f"{pedido.quantidade}x {pedido.tipo} {texto_prazo}"
             pos_y_texto = y_painel + (TAMANHO_ICONE_ITEM // 2 - FONTE.get_height() // 2)
-            if not icon: 
-                pos_y_texto = y_painel
+            if not icon: pos_y_texto = y_painel
                 
             TELA_JOGO.blit(FONTE.render(texto, True, cor_prazo),(x_pos, pos_y_texto))
-            
             y_painel += TAMANHO_ICONE_ITEM + 5 
     else:
         TELA_JOGO.blit(FONTE.render("Nenhum pedido ativo",True,COR_TEXTO),(30,y_painel))
@@ -248,7 +218,9 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
         TELA_JOGO.blit(FONTE.render(texto, True, COR_TEXTO), (30, y_painel + 7))
         botoes_loja_slots.append((rect, tipo))
         y_painel += 45
-    return botoes_loja_maquinas, botoes_loja_slots, botao_colocar_maquina_rect
+    
+    # Retorna None no terceiro valor pois o botão "Colocar" não existe mais
+    return botoes_loja_maquinas, botoes_loja_slots, None
 
 def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type, maquina_para_colocar):
     TELA_JOGO.fill(COR_FUNDO)
@@ -597,78 +569,85 @@ def main():
                     if evento.button == 1:
                         if pos_mouse_tela[0] < 400: # Clicou no PAINEL ESQUERDO
                             
-                            # (Precisamos chamar a interface aqui de novo para pegar os rects atualizados)
-                            b_maquinas, b_slots, b_colocar = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela, maquina_para_colocar)
+                            # Atualiza interface
+                            b_maquinas, b_slots, _ = desenhar_interface(game, jogador, selected_slot_type, pos_mouse_tela, maquina_para_colocar)
                             
-                            # 1. Lógica do Botão "Colocar Máquina"
                             clicou_em_botao_ui = False
-                            if b_colocar and b_colocar.collidepoint(pos_mouse_tela):
-                                clicou_em_botao_ui = True
-                                if maquina_para_colocar:
-                                    # Já estava em modo de colocação, então cancela
-                                    maquina_para_colocar = None
-                                    print("Modo de colocação desativado.")
-                                elif game.maquinas:
-                                    # Entra no modo de colocação
-                                    maquina_para_colocar = game.maquinas[0] # "Segura" a primeira máquina
-                                    selected_slot_type = None # Cancela seleção de slot
-                                    print(f"Modo de colocação ativado para: {maquina_para_colocar.tipo}")
+                            
+                            # 1. (Antigo Botão Colocar removido)
 
-                            # 2. Lógica da Loja de Slots
+                            # 2. Lógica da Loja de Slots (Mantida igual)
                             for rect, tipo in b_slots:
                                 if rect.collidepoint(pos_mouse_tela):
                                     clicou_em_botao_ui = True
                                     selected_slot_type = tipo if selected_slot_type != tipo else None
-                                    maquina_para_colocar = None # Cancela modo de colocação
+                                    maquina_para_colocar = None 
 
-                            # 3. Lógica da Loja de Máquinas
+                            # 3. Lógica da Loja de Máquinas (ALTERADA)
                             for rect, modelo in b_maquinas:
                                 if rect.collidepoint(pos_mouse_tela):
-                                    # ... (Lógica de COMPRA de máquina - não muda) ...
                                     clicou_em_botao_ui = True
-                                    game.dinheiro -= modelo['custo']
-                                    anim_key = modelo.get("anim_key", "M1") 
-                                    animacao_maquina = ANIMACAO_MAQUINAS_VISUAIS.get(anim_key)
-                                    nova_maquina = Maquina(
-                                        modelo["tipo"], modelo["producao"], modelo["custo"],
-                                        modelo.get("custo_energia", 10), 1, 1,
-                                        animacao=animacao_maquina
-                                    )
-                                    game.maquinas.append(nova_maquina)
-                                    print(f"Máquina '{modelo.get('nome', modelo['tipo'])}' comprada!")
                                     
-                        
+                                    # Verifica se TEM dinheiro, mas NÃO desconta ainda
+                                    if game.dinheiro >= modelo['custo']:
+                                        anim_key = modelo.get("anim_key", "M1") 
+                                        animacao_maquina = ANIMACAO_MAQUINAS_VISUAIS.get(anim_key)
+                                        
+                                        # Cria a máquina "Fantasma" imediatamente
+                                        nova_maquina = Maquina(
+                                            modelo["tipo"], modelo["producao"], modelo["custo"],
+                                            modelo.get("custo_energia", 10), 1, 1,
+                                            animacao=animacao_maquina
+                                        )
+                                        
+                                        maquina_para_colocar = nova_maquina
+                                        selected_slot_type = None
+                                        print(f"Selecionado para compra: {modelo.get('nome', modelo['tipo'])}")
+                                    else:
+                                        print("Dinheiro insuficiente para esta máquina!")
+                                    
                         else: # Clicou no MUNDO (direita do painel)
                             mouse_world_pos = camera.screen_to_world(pos_mouse_tela)
                             
                             if maquina_para_colocar:
-                                # --- MODO DE COLOCAÇÃO ATIVO ---
+                                # --- MODO DE COLOCAÇÃO ATIVO (COMPRA E COLOCA) ---
                                 cell_r, cell_c = get_cell_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
                                 slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
                                 
-                                # Verifica se está em um slot válido e não é a doca
+                                # Verifica slot válido
                                 if (slot_r, slot_c) in game.owned_slots and game.owned_slots.get((slot_r, slot_c)) != 'doca':
                                     
-                                    # --- GOAL 1: VERIFICAÇÃO SIMPLES (1x1) ---
-                                    # A célula está livre se NÃO estiver no grid OU se a lista nela estiver vazia
-                                    if not ((cell_r, cell_c) in grid_maquinas and grid_maquinas[(cell_r, cell_c)]):
+                                    # Verifica LIMITE de máquinas (seu pedido anterior)
+                                    maquinas_no_slot_atual = 0
+                                    for (m_cell_r, m_cell_c) in grid_maquinas.keys():
+                                        m_slot_r = int(m_cell_r * TAMANHO_CELULA // SLOT_ALTURA_PX)
+                                        m_slot_c = int(m_cell_c * TAMANHO_CELULA // SLOT_LARGURA_PX)
+                                        if m_slot_r == slot_r and m_slot_c == slot_c:
+                                            maquinas_no_slot_atual += 1
+                                    
+                                    LIMIT_MAQUINAS_POR_SLOT = 5
+
+                                    if maquinas_no_slot_atual >= LIMIT_MAQUINAS_POR_SLOT:
+                                        print(f"Slot cheio! Limite de {LIMIT_MAQUINAS_POR_SLOT} máquinas.")
+                                    
+                                    # Verifica se célula está livre
+                                    elif not ((cell_r, cell_c) in grid_maquinas and grid_maquinas[(cell_r, cell_c)]):
                                         
-                                        # Ação de colocar!
-                                        maquina_colocada = game.maquinas.pop(0) # Agora sim, remove do inventário
-                                        grid_maquinas[(cell_r, cell_c)] = [maquina_colocada] # Adiciona ao grid
-                                        print(f"Máquina colocada em {(cell_r, cell_c)}")
-                                        
-                                        maquina_para_colocar = None # Sai do modo de colocação
+                                        # --- MOMENTO DA COMPRA REAL ---
+                                        if game.dinheiro >= maquina_para_colocar.custo:
+                                            game.dinheiro -= maquina_para_colocar.custo # <--- DESCONTA AQUI
+                                            
+                                            grid_maquinas[(cell_r, cell_c)] = [maquina_para_colocar] 
+                                            print(f"Compra realizada! Máquina em {(cell_r, cell_c)}")
+                                            
+                                            maquina_para_colocar = None # Finaliza a ação
+                                        else:
+                                            print("Opa, dinheiro acabou antes de colocar!")
+                                            maquina_para_colocar = None
                                     else:
-                                        print("Célula já ocupada! Não é possível colocar.")
+                                        print("Célula já ocupada!")
                                 else:
-                                    print("Não pode colocar máquinas na doca ou fora da fábrica.")
-                            
-                            elif selected_slot_type:
-                                # --- MODO DE COMPRA DE SLOT ATIVO ---
-                                slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
-                                if game.expandir_fabrica(slot_r, slot_c, selected_slot_type): 
-                                    selected_slot_type = None # Desativa modo de compra
+                                    print("Local inválido.")
                                     
         # Só atualiza o jogo se o tutorial NÃO estiver sendo exibido E NÃO for game over
         if not mostrando_tutorial and game.estado_jogo != 'GAME_OVER':
@@ -684,17 +663,62 @@ def main():
                         game.estado_jogo = 'CAMINHAO_PARTINDO' 
                         print("Tempo esgotado! Caminhão partindo...")
                 
+                # --- NOVO BLOCO COM COLISÃO DE MÁQUINAS ---
                 if game.estado_jogo == 'JOGANDO': 
-                    next_pos_x = jogador.pos_x_px + direcao_x * jogador.velocidade * decorrido
-                    next_pos_y = jogador.pos_y_px + direcao_y * jogador.velocidade * decorrido
-                    next_slot_r, next_slot_c = get_slot_from_world_pos(next_pos_x, next_pos_y)
+                    # 1. Calcula o passo desejado (float)
+                    step_x = direcao_x * jogador.velocidade * decorrido
+                    step_y = direcao_y * jogador.velocidade * decorrido
                     
-                    if (next_slot_r, next_slot_c) in game.owned_slots:
-                        jogador.update(direcao_x, direcao_y, decorrido)
+                    # --- EIXO X ---
+                    # Cria um rect de teste movido em X
+                    # TRUQUE: .inflate(0, -10) diminui a altura do teste para evitar "agarrar" nas paredes de cima/baixo ao andar de lado
+                    rect_teste_x = jogador.rect.move(step_x, 0).inflate(0, -10)
+                    colisao_x = False
+                    
+                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                        if maquinas:
+                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                            rect_maquina.inflate_ip(-10, -10) # Hitbox da máquina levemente menor
+                            if rect_teste_x.colliderect(rect_maquina):
+                                colisao_x = True
+                                break 
+                    
+                    # --- EIXO Y ---
+                    # Cria um rect de teste movido em Y
+                    # TRUQUE: .inflate(-10, 0) diminui a largura do teste para evitar "agarrar" nas paredes laterais ao andar para cima/baixo
+                    rect_teste_y = jogador.rect.move(0, step_y).inflate(-10, 0)
+                    colisao_y = False
+                    
+                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                        if maquinas:
+                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                            rect_maquina.inflate_ip(-10, -10)
+                            if rect_teste_y.colliderect(rect_maquina):
+                                colisao_y = True
+                                break
+
+                    # Aplica o movimento permitido
+                    move_x = step_x if not colisao_x else 0
+                    move_y = step_y if not colisao_y else 0
+                    
+                    # Verifica se vai sair do mapa (slots comprados)
+                    final_pos_x = jogador.pos_x_px + move_x
+                    final_pos_y = jogador.pos_y_px + move_y
+                    final_slot_r, final_slot_c = get_slot_from_world_pos(final_pos_x, final_pos_y)
+                    
+                    if (final_slot_r, final_slot_c) in game.owned_slots:
+                        # Se não bateu na máquina e está no mapa, move
+                        jogador.pos_x_px += move_x
+                        jogador.pos_y_px += move_y
+                        jogador.rect.center = (round(jogador.pos_x_px), round(jogador.pos_y_px))
+                        
+                        # Atualiza animação se estiver se movendo
+                        if move_x != 0 or move_y != 0:
+                             jogador.update(direcao_x, direcao_y, decorrido)
+                        else:
+                             jogador.update(0, 0, decorrido) # Parado
                     else:
-                        jogador.update(0, 0, decorrido) 
-            else:
-                 jogador.update(0, 0, decorrido) 
+                        jogador.update(0, 0, decorrido) # Bloqueado pelo limite 
             
             camera.center_on(jogador.rect)
 
