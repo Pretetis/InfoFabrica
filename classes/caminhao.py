@@ -88,16 +88,13 @@ class Caminhao:
             return
 
         print("Processando entrega...")
-        # (Não precisamos mais da lista pedidos_a_remover, pois usamos turno_conclusao)
         for pedido in game_state.pedidos:
             if not pedido.entregue and pedido.tipo in self.carga:
                 if self.carga[pedido.tipo] >= pedido.quantidade:
                     print(f"Pedido de {pedido.quantidade}x {pedido.tipo} entregue!")
                     pedido.entregue = True
-                    
-                    # --- ALTERAÇÃO 4: MARCA O MOMENTO DA CONCLUSÃO ---
+
                     pedido.turno_conclusao = game_state.turno 
-                    # -------------------------------------------------
                     
                     recompensa = pedido.quantidade * 100 
                     game_state.dinheiro += recompensa

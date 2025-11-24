@@ -28,9 +28,7 @@ class Camera:
     def screen_to_world(self, screen_pos):
         return (screen_pos[0] + self.offset.x, screen_pos[1] + self.offset.y)
 
-# --- Início do Código Principal ---
 pygame.init()
-# --- CONFIGURAÇÕES ---
 JOGO_LARGURA, JOGO_ALTURA = 1800, 1000
 TELA = pygame.display.set_mode((JOGO_LARGURA, JOGO_ALTURA), pygame.RESIZABLE)
 TELA_JOGO = pygame.Surface((JOGO_LARGURA, JOGO_ALTURA))
@@ -38,13 +36,10 @@ pygame.display.set_caption("Jogo de Gestão com Logística")
 COR_FUNDO=(30,30,40);COR_PAINEL=(45,45,55);COR_TEXTO=(220,220,220);COR_TITULO=(255,255,255);COR_FUNDO_EXTERNO=(10,10,10);COR_BOTAO_NORMAL=(70,70,80);COR_BOTAO_HOVER=(100,100,110);COR_BOTAO_BORDA=(130,130,140);VERDE_BRILHANTE=(0,255,120);VERMELHO_BRILHANTE=(255,80,80);AMARELO_BRILHANTE=(255,200,0)
 FONTE=pygame.font.SysFont("monospace",18);FONTE_TITULO=pygame.font.SysFont("monospace",22,bold=True)
 FONTE_PEQUENA = pygame.font.SysFont("monospace", 14, bold=True)
-# --- NOVO: FONTE GRANDE PARA GAME OVER ---
 FONTE_GAMEOVER = pygame.font.SysFont("monospace", 72, bold=True)
 
 
-# --- CONFIGURAÇÕES DO GRID E SLOTS ---
 TAMANHO_CELULA = 60
-# TAMANHO_MAQUINA_VISUAL = int(TAMANHO_CELULA * 1.2) # (72 pixels)
 
 TAMANHO_M1_VISUAL = (int(TAMANHO_CELULA * 1.2), int(TAMANHO_CELULA * 1.2)) # (72, 72) - Quadrada
 TAMANHO_M2_VISUAL = (int(TAMANHO_CELULA * 1.8), int(TAMANHO_CELULA * 1.2)) # (108, 72) - Larga (Braço Robótico)
@@ -57,18 +52,10 @@ SLOT_ALTURA_CELULAS = 5
 SLOT_LARGURA_PX = SLOT_LARGURA_CELULAS * TAMANHO_CELULA
 SLOT_ALTURA_PX = SLOT_ALTURA_CELULAS * TAMANHO_CELULA
 
-# --- IMAGENS ---
-# IMG_MAQUINA_ESTATICA = pygame.transform.scale(pygame.image.load("assets/maquina.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL))
-# ANIMACAO_MAQUINA_M1 = [pygame.transform.scale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), (TAMANHO_MAQUINA_VISUAL, TAMANHO_MAQUINA_VISUAL)) for i in range(1, 4)]
-
-
-# M1 (Fábrica de Motor)
 ANIMACAO_MAQUINA_M1 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m1/m1{i}.png").convert_alpha(), TAMANHO_M1_VISUAL) for i in range(1, 4)]
 
-# NOVO: M2 (Fábrica de Chassi)
 ANIMACAO_MAQUINA_M2 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m2/m2{i}.png").convert_alpha(), TAMANHO_M2_VISUAL) for i in range(1, 4)]
 
-# NOVO: M3 (Fábrica de Motor Rápida)
 ANIMACAO_MAQUINA_M3 = [pygame.transform.smoothscale(pygame.image.load(f"assets/maquinas/m3/m3{i}.png").convert_alpha(), TAMANHO_M3_VISUAL) for i in range(1, 4)]
 
 ANIMACAO_MAQUINAS_VISUAIS = {
@@ -196,17 +183,14 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
 
     y_painel+=30
     
-    # --- LÓGICA DE EXIBIÇÃO DE PEDIDOS (MODIFICADA) ---
     pedidos_visiveis = game.pedidos 
     if pedidos_visiveis:
         for pedido in pedidos_visiveis:
-            # SE O PEDIDO FALHOU (PENALIZADO), NÃO DESENHA (SOME DA TELA)
             if pedido.penalizado:
                 continue 
             
             prazo_restante = pedido.prazo - game.turno
             
-            # Cores e Status
             cor_prazo = COR_TEXTO
             texto_status = f"(Prazo: {prazo_restante})"
             
@@ -214,7 +198,6 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
                 cor_prazo = VERDE_BRILHANTE
                 texto_status = "(ENTREGUE)"
             elif prazo_restante < 0: 
-                # Caso raro onde atrasou mas ainda não foi processada a penalidade
                 cor_prazo = VERMELHO_BRILHANTE
                 texto_status = "(ATRASADO)"
             elif prazo_restante <= 1: 
@@ -293,9 +276,7 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
             jogador_obj = item['obj']
             jogador_obj.draw(TELA_JOGO, camera)
             
-            # --- DEBUG HITBOX JOGADOR (CIANO) ---
             if DEBUG_COLISAO:
-                # Desenha a hitbox exata usada na lógica (levemente mais estreita)
                 hitbox_player = jogador_obj.rect.inflate(0, -10)
                 pygame.draw.rect(TELA_JOGO, (0, 255, 255), camera.apply_to_rect(hitbox_player), 1)
             
@@ -432,7 +413,6 @@ def desenhar_tutorial(superficie):
     draw_text("caminhão e envie-o (tecla T) para completar os pedidos!", FONTE, COR_TEXTO, x_atalho, y_atalho + 70)
 
 
-# --- NOVO: FUNÇÃO PARA DESENHAR TELA DE GAME OVER ---
 def desenhar_game_over(superficie):
     # 1. Overlay semi-transparente (vermelho)
     overlay = pygame.Surface((JOGO_LARGURA, JOGO_ALTURA), pygame.SRCALPHA)
@@ -529,9 +509,7 @@ def main():
                         direcao_x, direcao_y = 0, 0 
                     
                     if evento.key == pygame.K_e: 
-                        # Interação com Caminhão (MANTENHA ESTA PARTE IGUAL)
                         if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
-                             # ... (seu código do caminhão continua aqui igualzinho) ...
                              if jogador.inventario:
                                 for tipo, qtd in jogador.inventario.items():
                                     caminhao.receber_carga(tipo, qtd)
@@ -541,13 +519,10 @@ def main():
                                 print("Inventário vazio, nada para descarregar.")
 
                         else: 
-                            # --- CORREÇÃO: "SEGUNDA HITBOX" DE INTERAÇÃO ---
-                            # Cria uma hitbox temporária maior (inflada) ao redor do jogador
                             area_interacao = jogador.rect.inflate(40, 40) 
                             
                             maquina_encontrada = None
 
-                            # Verifica se essa área toca em alguma máquina
                             for (coord, maquinas) in grid_maquinas.items():
                                 r, c = coord
                                 rect_celula = pygame.Rect(c * TAMANHO_CELULA, r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
@@ -560,7 +535,6 @@ def main():
                             if maquina_encontrada:
                                 maquina_na_celula = maquina_encontrada
                                 
-                                # --- DAQUI PARA BAIXO É A SUA LÓGICA ORIGINAL DE COLETA ---
                                 tipo_para_coletar = None
                                 if jogador.inventario:
                                     tipo_para_coletar = list(jogador.inventario.keys())[0]
@@ -615,7 +589,6 @@ def main():
                 
                 if evento.type == pygame.MOUSEBUTTONDOWN:
                     
-                    # --- Botão Direito: CANCELAR AÇÕES ---
                     if evento.button == 3: 
                         if maquina_para_colocar:
                             maquina_para_colocar = None
@@ -624,7 +597,6 @@ def main():
                             selected_slot_type = None
                             print("Seleção de slot cancelada.")
 
-                    # --- Botão Esquerdo: AÇÕES PRINCIPAIS ---
                     if evento.button == 1:
                         if pos_mouse_tela[0] < 400: # Clicou no PAINEL ESQUERDO
                             
@@ -695,14 +667,11 @@ def main():
                                 else:
                                     print("Local inválido ou Doca.")
 
-                            # 2. Tentar Colocar Slot (CORREÇÃO AQUI)
                             elif selected_slot_type:
                                 slot_r, slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
-                                # Chama função do game_state que lida com validação e dinheiro
                                 if game.expandir_fabrica(slot_r, slot_c, selected_slot_type):
                                     selected_slot_type = None # Desmarca após comprar
                                     
-        # Atualizações do jogo (física, lógica)
         if not mostrando_tutorial and game.estado_jogo != 'GAME_OVER':
             if game.estado_jogo == 'JOGANDO':
                 

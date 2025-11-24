@@ -21,7 +21,6 @@ class Jogador:
         self.inventario = {} 
         self.carga_maxima = 20 
 
-        # Posições de Ponto Flutuante para movimento preciso
         self.pos_x_px = float(x) #
         self.pos_y_px = float(y) #
         
@@ -31,9 +30,6 @@ class Jogador:
         self.tempo_animacao = 100
         self.ultimo_update = pygame.time.get_ticks()
 
-        # --- CORREÇÃO DA HITBOX ---
-        # Em vez de usar o rect da imagem, criamos um rect MANUAL pequeno para os pés.
-        # Aumentei um pouco para (40, 20) para facilitar a colisão
         self.rect = pygame.Rect(0, 0, 35, 70) 
         self.rect.center = (round(self.pos_x_px), round(self.pos_y_px))
 
@@ -80,11 +76,7 @@ class Jogador:
             elif direcao_x > 0: self.estado_atual = "andando_dir"
             elif direcao_x < 0: self.estado_atual = "andando_esq"
         if self.estado_atual != estado_anterior: self.frame_atual = 0 #
-        
-        # --- ATENÇÃO: O movimento físico (self.pos_x_px) é atualizado no main.py agora ---
-        # Este update serve mais para a animação e sincronização final.
-        
-        # Sincroniza o Rect (Hitbox) com a posição float
+
         self.rect.center = (round(self.pos_x_px), round(self.pos_y_px))
 
         # Atualiza frames da animação
@@ -95,15 +87,11 @@ class Jogador:
     
     def draw(self, superficie, camera):
         imagem_atual = self.animacoes[self.estado_atual][self.frame_atual]
-        
-        # --- CORREÇÃO VISUAL ---
-        # 1. Cria um retângulo temporário para a IMAGEM (não para a física)
+
         rect_visual = imagem_atual.get_rect()
         
-        # 2. Alinha os pés da imagem (midbottom) com os pés da hitbox (midbottom)
         rect_visual.midbottom = self.rect.midbottom
         
-        # 3. Aplica a câmera na posição visual corrigida
         posicao_na_tela = camera.apply_to_rect(rect_visual)
         
         superficie.blit(imagem_atual, posicao_na_tela)

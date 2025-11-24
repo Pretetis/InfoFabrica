@@ -44,12 +44,10 @@ class GameState:
         self.estado_jogo = 'JOGANDO' 
 
         self.owned_slots = {}
-        
-        # --- ALTERAÇÃO 1: APENAS O SLOT "MEIO" DISPONÍVEL ---
+
         self.loja_slots = {
             "meio": {"custo": 500}
                             }
-        # ----------------------------------------------------
         
         self._initialize_starting_factory()
     
@@ -98,13 +96,10 @@ class GameState:
     def checar_penalidades_e_gameover(self):
         print(f"Analisando penalidades do Turno {self.turno}")
         for pedido in self.pedidos:
-            # Se já passou do prazo, não foi entregue e ainda não foi penalizado
             if not pedido.entregue and not pedido.penalizado and self.turno > pedido.prazo:
                 self.reputacao -= 20
                 pedido.penalizado = True
-                # --- ALTERAÇÃO 2: MARCAR TURNO DE CONCLUSÃO (FALHA) ---
                 pedido.turno_conclusao = self.turno 
-                # ------------------------------------------------------
                 print(f"PEDIDO ATRASADO: {pedido.quantidade}x {pedido.tipo}. Reputação: -20 (Total: {self.reputacao})")
 
         if self.reputacao <= -20:
@@ -115,8 +110,6 @@ class GameState:
         return False 
 
     def avancar_turno(self):
-        # --- ALTERAÇÃO 3: LIMPEZA DE PEDIDOS CONCLUÍDOS/ATRASADOS ---
-        # Remove pedidos que foram marcados como concluídos (sucesso ou falha) em turnos anteriores
         self.pedidos = [p for p in self.pedidos if p.turno_conclusao is None]
         # ------------------------------------------------------------
         
