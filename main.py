@@ -9,7 +9,7 @@ from classes.maquina import Maquina
 from classes.caminhao import Caminhao
 
 # ... (Logo após as cores e antes das configurações de grid)
-DEBUG_COLISAO = True  # Mude para False para esconder as linhas vermelhas
+DEBUG_COLISAO = False  # Mude para False para esconder as linhas vermelhas
 
 # --- CLASSE CAMERA ---
 class Camera:
@@ -529,23 +529,38 @@ def main():
                         direcao_x, direcao_y = 0, 0 
                     
                     if evento.key == pygame.K_e: 
-                        # Interação com Caminhão
+                        # Interação com Caminhão (MANTENHA ESTA PARTE IGUAL)
                         if caminhao and caminhao.estado == 'PARADO' and jogador.rect.colliderect(caminhao.area_carga):
-                            if jogador.inventario:
+                             # ... (seu código do caminhão continua aqui igualzinho) ...
+                             if jogador.inventario:
                                 for tipo, qtd in jogador.inventario.items():
                                     caminhao.receber_carga(tipo, qtd)
                                 print(f"Descarregou {jogador.inventario} no caminhão.")
                                 jogador.inventario.clear()
-                            else:
+                             else:
                                 print("Inventário vazio, nada para descarregar.")
-                        
+
                         else: 
-                            # Interação com Máquina (Coleta)
-                            cell_r, cell_c = get_cell_from_world_pos(jogador.rect.centerx, jogador.rect.centery)
-                            if (cell_r, cell_c) in grid_maquinas:
-                                maquina_na_celula = grid_maquinas[(cell_r, cell_c)][0] 
+                            # --- CORREÇÃO: "SEGUNDA HITBOX" DE INTERAÇÃO ---
+                            # Cria uma hitbox temporária maior (inflada) ao redor do jogador
+                            area_interacao = jogador.rect.inflate(40, 40) 
+                            
+                            maquina_encontrada = None
+
+                            # Verifica se essa área toca em alguma máquina
+                            for (coord, maquinas) in grid_maquinas.items():
+                                r, c = coord
+                                rect_celula = pygame.Rect(c * TAMANHO_CELULA, r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
                                 
-                                # Lógica de coleta inteligente
+                                if area_interacao.colliderect(rect_celula) and maquinas:
+                                    maquina_encontrada = maquinas[0]
+                                    break
+                            
+                            # Se encontrou uma máquina próxima, executa a coleta
+                            if maquina_encontrada:
+                                maquina_na_celula = maquina_encontrada
+                                
+                                # --- DAQUI PARA BAIXO É A SUA LÓGICA ORIGINAL DE COLETA ---
                                 tipo_para_coletar = None
                                 if jogador.inventario:
                                     tipo_para_coletar = list(jogador.inventario.keys())[0]
@@ -572,6 +587,8 @@ def main():
                                         print("Inventário do jogador está cheio!")
                                 else:
                                     print(f"Máquina não tem '{tipo_para_coletar}' para coletar.")
+                            else:
+                                print("Nenhuma máquina ao alcance.")
                     
                     if evento.key == pygame.K_t:
                         if caminhao and caminhao.estado == 'PARADO':
