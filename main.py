@@ -8,6 +8,9 @@ from classes.jogador import Jogador
 from classes.maquina import Maquina
 from classes.caminhao import Caminhao
 
+# ... (Logo após as cores e antes das configurações de grid)
+DEBUG_COLISAO = True  # Mude para False para esconder as linhas vermelhas
+
 # --- CLASSE CAMERA ---
 class Camera:
     def __init__(self, largura_tela, altura_tela):
@@ -224,6 +227,8 @@ def desenhar_interface(game, jogador, selected_slot_type, pos_mouse, maquina_par
 
 def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse_world_pos, selected_slot_type, maquina_para_colocar):
     TELA_JOGO.fill(COR_FUNDO)
+    
+    # 1. Desenha o Chão
     for (r, c), tipo_slot in game.owned_slots.items():
         if tipo_slot in IMG_FABRICA_TILES:
             slot_rect = pygame.Rect(c * SLOT_LARGURA_PX, r * SLOT_ALTURA_PX, SLOT_LARGURA_PX, SLOT_ALTURA_PX)
@@ -233,33 +238,78 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
         faixa_rect = pygame.Rect(c * TAMANHO_CELULA, r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
         TELA_JOGO.blit(img_faixa, camera.apply_to_rect(faixa_rect))
 
+    # --- LISTA DE RENDERIZAÇÃO (Y-SORT) ---
+    objetos_para_desenhar = []
+
+    # A. Adiciona o JOGADOR
+    objetos_para_desenhar.append({
+        'tipo': 'jogador',
+        'y_sort': jogador.rect.bottom,
+        'obj': jogador
+    })
+
+    # B. Adiciona as MÁQUINAS
     for (r, c), maquinas_na_celula in grid.items():
         for idx, maquina in enumerate(maquinas_na_celula):
             offset_visual = idx * 5
             
             img_maquina = maquina.get_current_frame()
-            cell_center_x = (c * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
-            cell_center_y = (r * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
             
-            rect_maquina = img_maquina.get_rect(center=(cell_center_x, cell_center_y))
+            # Centraliza visualmente
+            cx = (c * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
+            cy = (r * TAMANHO_CELULA) + (TAMANHO_CELULA / 2) + offset_visual
+            rect_maquina_visual = img_maquina.get_rect(center=(cx, cy))
             
-            TELA_JOGO.blit(img_maquina, camera.apply_to_rect(rect_maquina))
+            # Y-Sort baseado na base da CÉLULA
+            y_base_celula = ((r + 1) * TAMANHO_CELULA)
+            
+            objetos_para_desenhar.append({
+                'tipo': 'maquina',
+                'y_sort': y_base_celula, 
+                'obj': maquina,
+                'img': img_maquina,
+                'rect_visual': rect_maquina_visual, # Retângulo da IMAGEM
+                'grid_pos': (r, c) # Guardamos a posição na grade para o Debug
+            })
 
-         #   icon = IMG_ITENS.get(maquina.tipo)
-            
-            y_offset_item = 0 # Para empilhar os ícones se houver mais de um
+    # C. ORDENA E DESENHA
+    objetos_para_desenhar.sort(key=lambda item: item['y_sort'])
 
-            # Itera sobre o dicionário de peças da máquina
-            for item_tipo, pecas_count in maquina.pecas_para_coletar.items():
-                icon = IMG_ITENS.get(item_tipo) # Pega o ícone para este item
+    for item in objetos_para_desenhar:
+        if item['tipo'] == 'jogador':
+            jogador_obj = item['obj']
+            jogador_obj.draw(TELA_JOGO, camera)
+            
+            # --- DEBUG HITBOX JOGADOR (CIANO) ---
+            if DEBUG_COLISAO:
+                # Desenha a hitbox exata usada na lógica (levemente mais estreita)
+                hitbox_player = jogador_obj.rect.inflate(0, -10)
+                pygame.draw.rect(TELA_JOGO, (0, 255, 255), camera.apply_to_rect(hitbox_player), 1)
+            
+        elif item['tipo'] == 'maquina':
+            # Desenha a Máquina
+            maquina = item['obj']
+            rect_visual = item['rect_visual']
+            TELA_JOGO.blit(item['img'], camera.apply_to_rect(rect_visual))
+
+            # --- DEBUG HITBOX MÁQUINA (VERMELHO) ---
+            if DEBUG_COLISAO:
+                r, c = item['grid_pos']
+                # Recria exatamente o retângulo usado na lógica de colisão
+                rect_base_celula = pygame.Rect(c * TAMANHO_CELULA, r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                hitbox_real = rect_base_celula.inflate(-10, -10)
                 
+                # Desenha o contorno vermelho
+                pygame.draw.rect(TELA_JOGO, (255, 0, 0), camera.apply_to_rect(hitbox_real), 1)
+
+            # --- LÓGICA DE ÍCONES (Mantida igual) ---
+            y_offset_item = 0 
+            for item_tipo, pecas_count in maquina.pecas_para_coletar.items():
+                icon = IMG_ITENS.get(item_tipo)
                 if icon:
-                    TELA_LARGURA = 48
-                    TELA_ALTURA = 24
-                    
-                    # Ajusta o Y baseado no offset
-                    pos_x_tela = rect_maquina.centerx - (TELA_LARGURA / 2)
-                    pos_y_tela = rect_maquina.top - 30 - y_offset_item 
+                    TELA_LARGURA, TELA_ALTURA = 48, 24
+                    pos_x_tela = rect_visual.centerx - (TELA_LARGURA / 2)
+                    pos_y_tela = rect_visual.top - 30 - y_offset_item 
                     
                     rect_tela = pygame.Rect(pos_x_tela, pos_y_tela, TELA_LARGURA, TELA_ALTURA)
                     rect_tela_na_camera = camera.apply_to_rect(rect_tela)
@@ -272,25 +322,20 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
                     icon_rect = icon.get_rect(topleft=(pos_x_icon, pos_y_icon))
                     TELA_JOGO.blit(icon, camera.apply_to_rect(icon_rect))
 
-                    if pecas_count > 0:
-                        cor_texto_qtd = VERDE_BRILHANTE
-                    else:
-                        cor_texto_qtd = COR_TEXTO 
-                        
+                    cor_texto_qtd = VERDE_BRILHANTE if pecas_count > 0 else COR_TEXTO
                     texto_pecas = FONTE_PEQUENA.render(f"{pecas_count}", True, cor_texto_qtd)
                     
                     pos_x_texto = icon_rect.right + 4
                     pos_y_texto = rect_tela.centery - (texto_pecas.get_height() / 2)
-                    
                     TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_x_texto, pos_y_texto, texto_pecas.get_width(), texto_pecas.get_height())))
-                    
-                    y_offset_item += TELA_ALTURA + 2 # Incrementa o offset para o próximo item
-                    
-                elif pecas_count > 0: # Fallback se não houver ícone (mas houver peças)
+                    y_offset_item += TELA_ALTURA + 2 
+                elif pecas_count > 0: 
                     texto_pecas = FONTE.render(f"{pecas_count}x {item_tipo}", True, VERDE_BRILHANTE)
-                    pos_texto = (rect_maquina.centerx - texto_pecas.get_width() // 2, rect_maquina.top - 20 - y_offset_item)
+                    pos_texto = (rect_visual.centerx - texto_pecas.get_width() // 2, rect_visual.top - 20 - y_offset_item)
                     TELA_JOGO.blit(texto_pecas, camera.apply_to_rect(pygame.Rect(pos_texto, texto_pecas.get_size())))
                     y_offset_item += 20
+
+    # --- FANTASMA DE COLOCAÇÃO ---
     if selected_slot_type:
         mouse_slot_r, mouse_slot_c = get_slot_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
         is_valid_spot = False
@@ -304,29 +349,23 @@ def desenhar_mundo(game, grid, grid_decoracoes, jogador, caminhao, camera, mouse
 
     if maquina_para_colocar:
         mouse_cell_r, mouse_cell_c = get_cell_from_world_pos(mouse_world_pos[0], mouse_world_pos[1])
-        
         img_maquina = maquina_para_colocar.get_current_frame()
         if img_maquina:
-            cell_center_x = (mouse_cell_c * TAMANHO_CELULA) + (TAMANHO_CELULA / 2)
-            cell_center_y = (mouse_cell_r * TAMANHO_CELULA) + (TAMANHO_CELULA / 2)
+            cx = (mouse_cell_c * TAMANHO_CELULA) + (TAMANHO_CELULA / 2)
+            cy = (mouse_cell_r * TAMANHO_CELULA) + (TAMANHO_CELULA / 2)
+            rect_fantasma = img_maquina.get_rect(center=(cx, cy))
             
-            rect_fantasma = img_maquina.get_rect(center=(cell_center_x, cell_center_y))
-            
-            # GOAL 1: Verifica se a célula já está ocupada
             celula_ocupada = (mouse_cell_r, mouse_cell_c) in grid and grid.get((mouse_cell_r, mouse_cell_c))
-            
-            # Cria uma cópia da imagem para aplicar transparência
             s = img_maquina.copy()
-            if celula_ocupada:
-                # Fica vermelha se não puder colocar
-                s.fill((255, 50, 50, 180), special_flags=pygame.BLEND_RGBA_MULT)
-            else:
-                # Fica semitransparente normal se puder
-                s.fill((255, 255, 255, 180), special_flags=pygame.BLEND_RGBA_MULT)
-                
+            if celula_ocupada: s.fill((255, 50, 50, 180), special_flags=pygame.BLEND_RGBA_MULT)
+            else: s.fill((255, 255, 255, 180), special_flags=pygame.BLEND_RGBA_MULT)
             TELA_JOGO.blit(s, camera.apply_to_rect(rect_fantasma))
-    
-    jogador.draw(TELA_JOGO, camera)
+
+            # Debug Fantasma (Opcional)
+            if DEBUG_COLISAO:
+                 # Mostra onde a colisão vai ficar
+                 rect_base_fantasma = pygame.Rect(mouse_cell_c * TAMANHO_CELULA, mouse_cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                 pygame.draw.rect(TELA_JOGO, (255, 255, 0), camera.apply_to_rect(rect_base_fantasma), 1)
 
     if caminhao:
         caminhao.draw(TELA_JOGO, FONTE, camera)
@@ -663,62 +702,93 @@ def main():
                         game.estado_jogo = 'CAMINHAO_PARTINDO' 
                         print("Tempo esgotado! Caminhão partindo...")
                 
-                # --- NOVO BLOCO COM COLISÃO DE MÁQUINAS ---
-                if game.estado_jogo == 'JOGANDO': 
-                    # 1. Calcula o passo desejado (float)
-                    step_x = direcao_x * jogador.velocidade * decorrido
-                    step_y = direcao_y * jogador.velocidade * decorrido
-                    
-                    # --- EIXO X ---
-                    # Cria um rect de teste movido em X
-                    # TRUQUE: .inflate(0, -10) diminui a altura do teste para evitar "agarrar" nas paredes de cima/baixo ao andar de lado
-                    rect_teste_x = jogador.rect.move(step_x, 0).inflate(0, -10)
-                    colisao_x = False
-                    
-                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
-                        if maquinas:
-                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
-                            rect_maquina.inflate_ip(-10, -10) # Hitbox da máquina levemente menor
-                            if rect_teste_x.colliderect(rect_maquina):
-                                colisao_x = True
-                                break 
-                    
-                    # --- EIXO Y ---
-                    # Cria um rect de teste movido em Y
-                    # TRUQUE: .inflate(-10, 0) diminui a largura do teste para evitar "agarrar" nas paredes laterais ao andar para cima/baixo
-                    rect_teste_y = jogador.rect.move(0, step_y).inflate(-10, 0)
-                    colisao_y = False
-                    
-                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
-                        if maquinas:
-                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
-                            rect_maquina.inflate_ip(-10, -10)
-                            if rect_teste_y.colliderect(rect_maquina):
-                                colisao_y = True
-                                break
+                # --- LÓGICA DE MOVIMENTO E COLISÃO (CORRIGIDA V2) ---
+                if game.estado_jogo == 'JOGANDO':
+                    # Função auxiliar para verificar se um ponto está num slot válido
+                    def ponto_valido(x, y):
+                        sr, sc = get_slot_from_world_pos(x, y)
+                        return (sr, sc) in game.owned_slots
 
-                    # Aplica o movimento permitido
-                    move_x = step_x if not colisao_x else 0
-                    move_y = step_y if not colisao_y else 0
-                    
-                    # Verifica se vai sair do mapa (slots comprados)
-                    final_pos_x = jogador.pos_x_px + move_x
-                    final_pos_y = jogador.pos_y_px + move_y
-                    final_slot_r, final_slot_c = get_slot_from_world_pos(final_pos_x, final_pos_y)
-                    
-                    if (final_slot_r, final_slot_c) in game.owned_slots:
-                        # Se não bateu na máquina e está no mapa, move
-                        jogador.pos_x_px += move_x
-                        jogador.pos_y_px += move_y
-                        jogador.rect.center = (round(jogador.pos_x_px), round(jogador.pos_y_px))
-                        
-                        # Atualiza animação se estiver se movendo
-                        if move_x != 0 or move_y != 0:
-                             jogador.update(direcao_x, direcao_y, decorrido)
-                        else:
-                             jogador.update(0, 0, decorrido) # Parado
+                    # ---------------- EIXO X ----------------
+                    step_x = direcao_x * jogador.velocidade * decorrido
+                    jogador.pos_x_px += step_x
+                    jogador.rect.centerx = round(jogador.pos_x_px) # Sincroniza Rect
+
+                    # 1. Colisão com MÁQUINAS (X)
+                    hitbox_jogador = jogador.rect.inflate(0, -10) # Hitbox mais estreita para passar entre máquinas
+                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                        if maquinas:
+                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                            hitbox_maquina = rect_maquina.inflate(-10, -10) # Hitbox da máquina levemente reduzida
+
+                            if hitbox_jogador.colliderect(hitbox_maquina):
+                                if step_x > 0: # Indo p/ Direita -> Bateu na Esquerda da Máquina
+                                    jogador.rect.right = hitbox_maquina.left
+                                elif step_x < 0: # Indo p/ Esquerda -> Bateu na Direita da Máquina
+                                    jogador.rect.left = hitbox_maquina.right
+                                # Sincroniza o float com a nova posição física
+                                jogador.pos_x_px = float(jogador.rect.centerx)
+
+                    # 2. Colisão com LIMITES DO MUNDO / SLOTS (X)
+                    # Verifica os cantos da direção do movimento
+                    if step_x > 0: # Direita: Testa canto superior e inferior direito
+                        if not ponto_valido(jogador.rect.right, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
+                            # Se saiu, empurra de volta para a borda do slot
+                            slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
+                            limite_direita = (slot_atual_c + 1) * SLOT_LARGURA_PX
+                            if jogador.rect.right > limite_direita: # Garante que não ultrapasse
+                                jogador.rect.right = limite_direita - 1
+                                jogador.pos_x_px = float(jogador.rect.centerx)
+
+                    elif step_x < 0: # Esquerda: Testa canto superior e inferior esquerdo
+                        if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.left, jogador.rect.bottom):
+                            slot_atual_c = int(jogador.rect.centerx // SLOT_LARGURA_PX)
+                            limite_esquerda = slot_atual_c * SLOT_LARGURA_PX
+                            if jogador.rect.left < limite_esquerda:
+                                jogador.rect.left = limite_esquerda + 1
+                                jogador.pos_x_px = float(jogador.rect.centerx)
+
+                    # ---------------- EIXO Y ----------------
+                    step_y = direcao_y * jogador.velocidade * decorrido
+                    jogador.pos_y_px += step_y
+                    jogador.rect.centery = round(jogador.pos_y_px) # Sincroniza Rect
+
+                    # 3. Colisão com MÁQUINAS (Y)
+                    hitbox_jogador = jogador.rect.inflate(-10, 0) # Hitbox mais baixa
+                    for (cell_r, cell_c), maquinas in grid_maquinas.items():
+                        if maquinas:
+                            rect_maquina = pygame.Rect(cell_c * TAMANHO_CELULA, cell_r * TAMANHO_CELULA, TAMANHO_CELULA, TAMANHO_CELULA)
+                            hitbox_maquina = rect_maquina.inflate(-10, -10)
+
+                            if hitbox_jogador.colliderect(hitbox_maquina):
+                                if step_y > 0: # Descendo -> Bateu no Topo da Máquina
+                                    jogador.rect.bottom = hitbox_maquina.top
+                                elif step_y < 0: # Subindo -> Bateu na Base da Máquina
+                                    jogador.rect.top = hitbox_maquina.bottom
+                                jogador.pos_y_px = float(jogador.rect.centery)
+
+                    # 4. Colisão com LIMITES DO MUNDO / SLOTS (Y)
+                    if step_y > 0: # Baixo
+                        if not ponto_valido(jogador.rect.left, jogador.rect.bottom) or not ponto_valido(jogador.rect.right, jogador.rect.bottom):
+                            slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
+                            limite_baixo = (slot_atual_r + 1) * SLOT_ALTURA_PX
+                            if jogador.rect.bottom > limite_baixo:
+                                jogador.rect.bottom = limite_baixo - 1
+                                jogador.pos_y_px = float(jogador.rect.centery)
+
+                    elif step_y < 0: # Cima
+                        if not ponto_valido(jogador.rect.left, jogador.rect.top) or not ponto_valido(jogador.rect.right, jogador.rect.top):
+                            slot_atual_r = int(jogador.rect.centery // SLOT_ALTURA_PX)
+                            limite_cima = slot_atual_r * SLOT_ALTURA_PX
+                            if jogador.rect.top < limite_cima:
+                                jogador.rect.top = limite_cima + 1
+                                jogador.pos_y_px = float(jogador.rect.centery)
+
+                    # Atualiza a animação
+                    if step_x != 0 or step_y != 0:
+                         jogador.update(direcao_x, direcao_y, decorrido)
                     else:
-                        jogador.update(0, 0, decorrido) # Bloqueado pelo limite 
+                         jogador.update(0, 0, decorrido)
             
             camera.center_on(jogador.rect)
 
